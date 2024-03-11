@@ -8,7 +8,7 @@ import time
 import torch
 import matplotlib.pyplot as plt
 
-Ns = np.arange(1, 1000, 20)
+Ns = np.arange(1000, 1, -20)
 repeat = 10
 np_time = np.zeros((len(Ns), repeat))
 torch_total_time = np.zeros((len(Ns), repeat))
