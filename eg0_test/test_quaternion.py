@@ -8,6 +8,7 @@ from cores.differentiable_optimization.quat_diff_utils import Quaternion_RDRT
 from cores.differentiable_optimization.ellipsoid_quat_pos import Ellipsoid_Quat_Pos
 from cores.utils.rotation_utils import get_rot_matrix_from_quat, get_quat_from_rot_matrix, get_rot_matrix_from_euler_zyx
 from cores.configuration.configuration import Configuration
+from torch.profiler import profile, record_function, ProfilerActivity
 config = Configuration()
 
 DO = Ellipsoid_Quat_Pos()
@@ -46,9 +47,13 @@ b_torch = b_torch.repeat(N,1)
 
 # Compute the gradient
 print("==> Compute the gradient")
-number = 1000
+number = 10000
 print("Avg time to compute the gradient: ",
       timeit.timeit('DO.get_gradient(A_torch, a_torch, B_torch, b_torch, quat_torch, D_torch)', globals=globals(), number=number)/number)
+with profile(activities=[ProfilerActivity.CPU], record_shapes=True) as prof_gradient:
+    with record_function("get_gradient"):
+        alpha_dx = DO.get_gradient(A_torch, a_torch, B_torch, b_torch, quat_torch, D_torch)
+
 alpha_dx = DO.get_gradient(A_torch, a_torch, B_torch, b_torch, quat_torch, D_torch)
 print("alpha_dx: ", alpha_dx.shape)
 
@@ -56,6 +61,11 @@ print("alpha_dx: ", alpha_dx.shape)
 print("==> Compute the gradient and hessian")
 print("Avg time to compute the gradient and hessian: ",
         timeit.timeit('DO.get_gradient_and_hessian(A_torch, a_torch, B_torch, b_torch, quat_torch, D_torch)', globals=globals(), number=number)/number)
+
+with profile(activities=[ProfilerActivity.CPU], record_shapes=True) as prof_gradient_hessian:
+    with record_function("get_gradient_and_hessian"):
+        alpha_dx, alpha_dxdx = DO.get_gradient_and_hessian(A_torch, a_torch, B_torch, b_torch, quat_torch, D_torch)
+
 alpha_dx, alpha_dxdx = DO.get_gradient_and_hessian(A_torch, a_torch, B_torch, b_torch, quat_torch, D_torch)
 print("alpha_dx: ", alpha_dx.shape)
 print("alpha_dxdx: ", alpha_dxdx.shape)
@@ -79,3 +89,5 @@ print("alpha_dxdx: ", alpha_dxdx.shape)
 # print("alpha_dx:", alpha_dx)
 # print("alpha_dx_new:", alpha_dx_new)
 # print("alpha_dx_anticipated:", alpha_dx_anticipated)
+prof_gradient.export_chrome_trace("trace_grdient.json")
+prof_gradient_hessian.export_chrome_trace("trace_grdient_hessian.json")
