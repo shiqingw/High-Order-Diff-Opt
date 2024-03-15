@@ -1,6 +1,6 @@
 import torch
 
-class Ellipsoid:
+class Ellipsoid():
     """
     We consider F(p) = (p - a)^T A (p - a) where A is a symmetric matrix and a is a vector.
     The parameters of F are A and a. In compact form, x = [A.flatten(), a]. This class calculates

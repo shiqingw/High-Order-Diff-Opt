@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 import sympy as sp
-from cores.utils.config import Configuration
+from cores.configuration.configuration import Configuration
 config = Configuration()
 
 def get_quat_from_rot_matrix(rot_matrix):

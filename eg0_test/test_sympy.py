@@ -3,6 +3,7 @@ import sympy as sp
 qx, qy, qz, qw = sp.symbols('qx qy qz qw', real=True)
 a, b, c = sp.symbols('a b c', real=True)
 r11, r12, r13, r21, r22, r23, r31, r32, r33 = sp.symbols('r11 r12 r13 r21 r22 r23 r31 r32 r33', real=True)
+pxx, pxy, pxz, pxw, pyy, pyz, pyw, pzz, pzw, pww = sp.symbols('pxx pxy pxz pxw pyy pyz pyw pzz pzw pww', real=True)
 x_vars = [qx, qy, qz, qw]
 
 R_b_to_w = sp.Matrix([[2*(qw**2+qx**2)-1, 2*(qx*qy-qw*qz), 2*(qx*qz+qw*qy)],
@@ -22,7 +23,17 @@ substitution_expr = {qw**2+qx**2:  (r11+1)/2,
                     qw**2+qz**2: (r33+1)/2,
                     2*qw**2+2*qx**2-1: r11,
                     2*qw**2+2*qy**2-1: r22,
-                    2*qw**2+2*qz**2-1: r33}
+                    2*qw**2+2*qz**2-1: r33,
+                    qx*qx: pxx,
+                    qx*qy: pxy,
+                    qx*qz: pxz,
+                    qx*qw: pxw,
+                    qy*qy: pyy,
+                    qy*qz: pyz,
+                    qy*qw: pyw,
+                    qz*qz: pzz,
+                    qz*qw: pzw,
+                    qw*qw: pww,}
 # Calculate and print Jacobian and Hessian for each element in M with respect to x_vars
 for i in range(M.rows):
     for j in range(M.cols):
