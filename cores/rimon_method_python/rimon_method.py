@@ -13,7 +13,7 @@ def rimon_method_numpy(A, a, B, b):
     b (np.array, shape (n,)): The center of the second ellipsoid.
     
     Outputs:
-    x_rimon (np.array, shape (n,)): The point on the first ellipsoid where the ellipsoidal level
+    x_rimon (np.array, shape (n,)): The point on the second ellipsoid where the ellipsoidal level
                 surfaces surrounding the first ellipsoid first touch the second ellipsoid.
     """
 
@@ -47,7 +47,7 @@ def rimon_method_pytorch(A, a, B, b):
     b (torch.Tensor, shape (batch_size, n)): Batch of centers for the second ellipsoid.
     
     Outputs:
-    x_rimon (torch.Tensor, shape (batch_size, n)): Batch of points on the first ellipsoid where the
+    x_rimon (torch.Tensor, shape (batch_size, n)): Batch of points on the second ellipsoid where the
                 ellipsoidal level surfaces surrounding the first ellipsoid first touch the second ellipsoid.
     """
     batch_size, nv, _ = A.shape

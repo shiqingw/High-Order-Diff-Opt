@@ -22,6 +22,14 @@ def get_rot_matrix_from_quat(quat):
     rot_matrix = r.as_matrix()
     return rot_matrix
 
+def get_rot_matrix_from_euler_zyx(euler):
+    """
+    The euler value is in extrinsic (z,y,x) format
+    """
+    r = R.from_euler('zyx', euler, degrees=False)
+    rot_matrix = r.as_matrix()
+    return rot_matrix
+
 def get_Q_matrix_from_quat(quat):
     """
     Return the Q matrix for quaternion differentiation. 
