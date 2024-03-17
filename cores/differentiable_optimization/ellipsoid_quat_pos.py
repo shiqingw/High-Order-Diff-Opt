@@ -36,6 +36,7 @@ class Ellipsoid_Quat_Pos():
         D_torch (np.array, shape (dim(p),dim(p))): The diagonal matrix representing the digonal elements of the first ellipsoid.
         
         Returns:
+        (torch.Tensor, shape (batch_size, dim(p)): p_rimon
         (torch.Tensor, shape (batch_size, 4+dim(p)): dF1(p_rimon)/dx
         """
         
@@ -66,7 +67,7 @@ class Ellipsoid_Quat_Pos():
         y_dx[:,6:9,4:7] = torch.eye(3, dtype=A_torch.dtype, device=A_torch.device)
         alpha_dx = torch.matmul(alpha_dy.unsqueeze(1), y_dx).squeeze(1) # shape (batch_size, 4+dim(p))
 
-        return alpha_dx
+        return p_rimon, alpha_dx
 
     def get_gradient_and_hessian(self, A_torch, a_torch, B_torch, b_torch, q_torch, D_torch):
         """
@@ -79,6 +80,7 @@ class Ellipsoid_Quat_Pos():
         D_torch (np.array, shape (dim(p),dim(p))): The diagonal matrix representing the digonal elements of the first ellipsoid.
         
         Returns:
+        (torch.Tensor, shape (batch_size, dim(p)): p_rimon
         (torch.Tensor, shape (batch_size, 4+dim(p)): dF1(p_rimon)/dx
         (torch.Tensor, shape (batch_size, 4+dim(p), 4+dim(p)): d2F1(p_rimon)/dx2
         """
@@ -127,4 +129,4 @@ class Ellipsoid_Quat_Pos():
         y_dxdx[:,0:6,0:4,0:4] = RDRT_dqdq
         tmp2 = torch.einsum('bi,bijk->bjk', alpha_dy, y_dxdx) # shape (batch_size, 7, 7)
         alpha_dxdx = tmp1 + tmp2 # shape (batch_size, 7, 7)
-        return alpha_dx, alpha_dxdx
+        return p_rimon, alpha_dx, alpha_dxdx

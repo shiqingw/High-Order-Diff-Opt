@@ -18,7 +18,7 @@ class DiffOptHelper(object):
         if not isinstance(constraints_sympy, list) or not isinstance(constraints_sympy[0], sympy.Expr):
             raise TypeError("constraints_sympy must be a list of sympy expressions \
                             corresponding to the constraints of cvxpy_prob")
-
+        self.constraints_sympy = constraints_sympy
         self.p_vars = p_vars
         self.theta_vars = theta_vars
         self.dummy_vars = dummy_vars
@@ -62,7 +62,7 @@ class DiffOptHelper(object):
         implicit_b_dtheta = Matrix([simplify(diff(implicit_b, theta_var)) for theta_var in self.theta_vars])
         # implicit_N_dtheta = [diff(implicit_N, theta_var) for theta_var in self.theta_vars]
         # implicit_b_dtheta = [diff(implicit_b, theta_var) for theta_var in self.theta_vars]
-        self.N_func = lambdify([self.implicit_p_vars, self.theta_vars, self.implicit_dual_vars. self.dummy_vars], implicit_N, "numpy")
+        self.N_func = lambdify([self.implicit_p_vars, self.theta_vars, self.implicit_dual_vars, self.dummy_vars], implicit_N, "numpy")
         self.b_func = lambdify([self.implicit_p_vars, self.theta_vars, self.implicit_dual_vars, self.dummy_vars], implicit_b, "numpy")
         self.N_dtheta_func = lambdify([self.implicit_p_vars,
                                        self.theta_vars,
@@ -173,7 +173,7 @@ class DiffOptHelper(object):
             hessian_dual: a list of numpy arrays of shape (dim(dual_vars), dim(theta_vars), dim(theta_vars))
         """
         threshhold = 1e-4
-        constraint_values = np.array([self.constraints_dict[i]["value"](p_val, theta_val) for i in range(1, len(self.constraints_sympy))])
+        constraint_values = np.array([self.constraints_dict[i]["value"](p_val, theta_val, dummy_val) for i in range(1, len(self.constraints_sympy))])
         active_set_B = np.where(np.abs(constraint_values - 1) <= threshhold)[0] 
         keep_inds = np.concatenate((np.arange(len(self.p_vars)), active_set_B + len(self.p_vars)))
         N_total = self.N_func(p_val, theta_val, dual_val, dummy_val)
