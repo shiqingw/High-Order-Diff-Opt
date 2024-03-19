@@ -25,26 +25,27 @@ class Ellipsoid_Quat_Pos():
         self.RDRT = Quaternion_RDRT_Symmetric()
         self.solver = rimon_method_pytorch
     
-    def get_gradient(self, A_torch, a_torch, B_torch, b_torch, q_torch, D_torch):
+    def get_gradient(self, a_torch, q_torch, D_torch, R_torch, B_torch, b_torch):
         """
         Compute dF1(p_rimon)/dx where x = [qx, qy, qz, qw, ax, ay, az] 
-        A_torch (np.array, shape (dim(p),dim(p))): The matrix of the first ellipsoid.
         a_torch (np.array, shape (dim(p),)): The center of the first ellipsoid.
-        B_torch (np.array, shape (dim(p),dim(p))): The matrix of the second ellipsoid.
-        b_torch (np.array, shape (dim(p),)): The center of the second ellipsoid.
         q_torch (np.array, shape (4,)): The quaternion representing the rotation of the first ellipsoid.
         D_torch (np.array, shape (dim(p),dim(p))): The diagonal matrix representing the digonal elements of the first ellipsoid.
+        R_torch (np.array, shape (dim(p),dim(p))): The rotation matrix representing the rotation of the first ellipsoid.
+        B_torch (np.array, shape (dim(p),dim(p))): The matrix of the second ellipsoid.
+        b_torch (np.array, shape (dim(p),)): The center of the second ellipsoid.
         
         Returns:
         (torch.Tensor, shape (batch_size, dim(p)): p_rimon
         (torch.Tensor, shape (batch_size, 4+dim(p)): dF1(p_rimon)/dx
         """
         
-        batch_size, dim_p, _ = A_torch.shape
+        batch_size, dim_p = a_torch.shape
         if dim_p != 3:
             raise NotImplementedError("dim_p must be 3")
         
         # y = [A11, A12, A13, A22, A23, A33, a1, a2, a3]
+        A_torch = torch.matmul(torch.matmul(R_torch, D_torch), R_torch.transpose(-1,-2)) # shape (batch_size, dim(p), dim(p))
         p_rimon = self.solver(A_torch, a_torch, B_torch, b_torch)
         F1_dp = self.SF.F_dp(p_rimon, A_torch, a_torch)
         F2_dp = self.SF.F_dp(p_rimon, B_torch, b_torch)
@@ -59,7 +60,7 @@ class Ellipsoid_Quat_Pos():
                                         F1_dpdy, F2_dpdy) # shape (batch_size, 9)
         
         # Compute the gradient wrt x = [qx, qy, qz, qw, a1, a2, a3]
-        RDRT_dq = self.RDRT.RDRT_dq(q_torch, D_torch) # shape (batch_size, 6, 4)
+        RDRT_dq = self.RDRT.RDRT_dq(q_torch, D_torch, R_torch) # shape (batch_size, 6, 4)
         dim_y = 9
         dim_x = 7
         y_dx = torch.zeros((batch_size,dim_y,dim_x), dtype=A_torch.dtype, device=A_torch.device)
@@ -69,15 +70,15 @@ class Ellipsoid_Quat_Pos():
 
         return p_rimon, alpha_dx
 
-    def get_gradient_and_hessian(self, A_torch, a_torch, B_torch, b_torch, q_torch, D_torch):
+    def get_gradient_and_hessian(self, a_torch, q_torch, D_torch, R_torch, B_torch, b_torch):
         """
-        Compute dF1(p_rimon)/dx where x = [qx, qy, qz, qw, ax, ay, az] 
-        A_torch (np.array, shape (dim(p),dim(p))): The matrix of the first ellipsoid.
+        Compute dF1(p_rimon)/dxdx where x = [qx, qy, qz, qw, ax, ay, az] 
         a_torch (np.array, shape (dim(p),)): The center of the first ellipsoid.
-        B_torch (np.array, shape (dim(p),dim(p))): The matrix of the second ellipsoid.
-        b_torch (np.array, shape (dim(p),)): The center of the second ellipsoid.
         q_torch (np.array, shape (4,)): The quaternion representing the rotation of the first ellipsoid.
         D_torch (np.array, shape (dim(p),dim(p))): The diagonal matrix representing the digonal elements of the first ellipsoid.
+        R_torch (np.array, shape (dim(p),dim(p))): The rotation matrix representing the rotation of the first ellipsoid.
+        B_torch (np.array, shape (dim(p),dim(p))): The matrix of the second ellipsoid.
+        b_torch (np.array, shape (dim(p),)): The center of the second ellipsoid.
         
         Returns:
         (torch.Tensor, shape (batch_size, dim(p)): p_rimon
@@ -85,11 +86,12 @@ class Ellipsoid_Quat_Pos():
         (torch.Tensor, shape (batch_size, 4+dim(p), 4+dim(p)): d2F1(p_rimon)/dx2
         """
 
-        batch_size, dim_p, _ = A_torch.shape
+        batch_size, dim_p = a_torch.shape
         if dim_p != 3:
             raise NotImplementedError("dim_p must be 3")
         
         # y = [A11, A12, A13, A22, A23, A33, a1, a2, a3]
+        A_torch = torch.matmul(torch.matmul(R_torch, D_torch), R_torch.transpose(-1,-2)) # shape (batch_size, dim(p), dim(p))
         p_rimon = self.solver(A_torch, a_torch, B_torch, b_torch)
         F1_dp = self.SF.F_dp(p_rimon, A_torch, a_torch)
         F2_dp = self.SF.F_dp(p_rimon, B_torch, b_torch)
@@ -114,7 +116,7 @@ class Ellipsoid_Quat_Pos():
                                      F1_dydy, F2_dydy, F1_dpdpdp, F2_dpdpdp, F1_dpdpdy, F2_dpdpdy, F1_dpdydy, F2_dpdydy)
         
         # Compute the gradient wrt x = [qx, qy, qz, qw, a1, a2, a3]
-        RDRT_dq = self.RDRT.RDRT_dq(q_torch, D_torch) # shape (batch_size, 6, 4)
+        RDRT_dq = self.RDRT.RDRT_dq(q_torch, D_torch, R_torch) # shape (batch_size, 6, 4)
         dim_y = 9
         dim_x = 7
         y_dx = torch.zeros((batch_size,dim_y,dim_x), dtype=A_torch.dtype, device=A_torch.device)
@@ -123,7 +125,7 @@ class Ellipsoid_Quat_Pos():
         alpha_dx = torch.matmul(alpha_dy.unsqueeze(1), y_dx).squeeze(1) # shape (batch_size, 4+dim(p))
 
         # Compute the hessian wrt x = [qx, qy, qz, qw, a1, a2, a3]
-        RDRT_dqdq = self.RDRT.RDRT_dqdq(q_torch, D_torch)
+        RDRT_dqdq = self.RDRT.RDRT_dqdq(q_torch, D_torch, R_torch)
         tmp1 = torch.matmul(torch.matmul(y_dx.transpose(-1, -2), alpha_dydy), y_dx) # shape (batch_size, 7, 7)
         y_dxdx = torch.zeros((batch_size, dim_y, dim_x, dim_x), dtype=A_torch.dtype, device=A_torch.device)
         y_dxdx[:,0:6,0:4,0:4] = RDRT_dqdq

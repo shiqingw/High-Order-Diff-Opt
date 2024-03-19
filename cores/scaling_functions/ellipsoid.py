@@ -384,3 +384,4 @@ class Ellipsoid_Symmetric():
         total[:,:,0:dim_A_flat,dim_A_flat:dim_x] = tmp.transpose(-1,-2)
         
         return total
+    

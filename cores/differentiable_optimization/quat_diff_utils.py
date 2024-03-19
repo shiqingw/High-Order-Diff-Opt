@@ -190,26 +190,27 @@ class Quaternion_RDRT_Symmetric():
     to calculate the Jacobian and Hessian of each element M w.r.t. q.
     """
     @staticmethod
-    def RDRT_dq(q, D):
+    def RDRT_dq(q, D, R):
         """
         Calculate the derivative of M.flatten() w.r.t. q.
         q (torch.Tensor, shape (batch_size, 4)): input
         D (torch.Tensor, shape (batch_size, 3, 3)): diagonal matrix
+        R (torch.Tensor, shape (batch_size, 3, 3)): rotation matrix
 
         Returns:
         (torch.Tensor, shape (batch_size, 6, 4)): dM/dq
         """
         qx, qy, qz, qw = q.unbind(-1)
         a, b, c = D[:,0,0], D[:,1,1], D[:,2,2]
-        r11 = 2*(qw**2+qx**2)-1
-        r12 = 2*(qx*qy-qw*qz)
-        r13 = 2*(qx*qz+qw*qy)
-        r21 = 2*(qx*qy+qw*qz)
-        r22 = 2*(qw**2+qy**2)-1
-        r23 = 2*(qy*qz-qw*qx)
-        r31 = 2*(qx*qz-qw*qy)
-        r32 = 2*(qy*qz+qw*qx)
-        r33 = 2*(qw**2+qz**2)-1
+        r11 = R[:,0,0]
+        r12 = R[:,0,1]
+        r13 = R[:,0,2]
+        r21 = R[:,1,0]
+        r22 = R[:,1,1]
+        r23 = R[:,1,2]
+        r31 = R[:,2,0]
+        r32 = R[:,2,1]
+        r33 = R[:,2,2]
         M11_dq = torch.stack([8*a*qx*r11 + 4*b*qy*r12 + 4*c*qz*r13,
                               4*b*qx*r12 + 4*c*qw*r13,
                               -4*b*qw*r12 + 4*c*qx*r13,
@@ -243,11 +244,12 @@ class Quaternion_RDRT_Symmetric():
         return torch.stack([M11_dq, M12_dq, M13_dq, M22_dq, M23_dq, M33_dq], dim=1)
     
     @staticmethod
-    def RDRT_dqdq(q, D):
+    def RDRT_dqdq(q, D, R):
         """
         Calculate the hessian of M.flatten() w.r.t. q.
         q (torch.Tensor, shape (batch_size, 4)): input
         D (torch.Tensor, shape (batch_size, 3, 3)): diagonal matrix
+        R (torch.Tensor, shape (batch_size, 3, 3)): rotation matrix
 
         Returns:
         (torch.Tensor, shape (batch_size, 6, 4, 4)): d^2M/dqdq

@@ -47,27 +47,27 @@ b_torch = b_torch.repeat(N,1)
 # Compute the gradient
 print("==> Compute the gradient")
 
-# number = 10000
-# print("Avg time to compute the gradient: ",
-#       timeit.timeit('DO.get_gradient(A_torch, a_torch, B_torch, b_torch, quat_torch, D_torch)', globals=globals(), number=number)/number)
+number = 10000
+print("Avg time to compute the gradient: ",
+      timeit.timeit('DO.get_gradient(a_torch, quat_torch, D_torch, R_torch, B_torch, b_torch)', globals=globals(), number=number)/number)
 # with profile(activities=[ProfilerActivity.CPU], record_shapes=True) as prof_gradient:
 #     with record_function("get_gradient"):
-#         alpha_dx = DO.get_gradient(A_torch, a_torch, B_torch, b_torch, quat_torch, D_torch)
+#         p_rimon, alpha_dx = DO.get_gradient(a_torch, quat_torch, D_torch, R_torch, B_torch, b_torch)
 
-p_rimon, alpha_dx = DO.get_gradient(A_torch, a_torch, B_torch, b_torch, quat_torch, D_torch)
+p_rimon, alpha_dx = DO.get_gradient(a_torch, quat_torch, D_torch, R_torch, B_torch, b_torch)
 print("p_rimon: ", p_rimon)
 print("alpha_dx: ", alpha_dx)
 
 # Compute the gradient and hessian
 print("==> Compute the gradient and hessian")
 
-# print("Avg time to compute the gradient and hessian: ",
-#         timeit.timeit('DO.get_gradient_and_hessian(A_torch, a_torch, B_torch, b_torch, quat_torch, D_torch)', globals=globals(), number=number)/number)
+print("Avg time to compute the gradient and hessian: ",
+        timeit.timeit('DO.get_gradient_and_hessian(a_torch, quat_torch, D_torch, R_torch, B_torch, b_torch)', globals=globals(), number=number)/number)
 # with profile(activities=[ProfilerActivity.CPU], record_shapes=True) as prof_gradient_hessian:
 #     with record_function("get_gradient_and_hessian"):
-#         alpha_dx, alpha_dxdx = DO.get_gradient_and_hessian(A_torch, a_torch, B_torch, b_torch, quat_torch, D_torch)
+#         p_rimon, alpha_dx, alpha_dxdx = DO.get_gradient_and_hessian(a_torch, quat_torch, D_torch, R_torch, B_torch, b_torch)
 
-p_rimon, alpha_dx, alpha_dxdx = DO.get_gradient_and_hessian(A_torch, a_torch, B_torch, b_torch, quat_torch, D_torch)
+p_rimon, alpha_dx, alpha_dxdx = DO.get_gradient_and_hessian(a_torch, quat_torch, D_torch, R_torch, B_torch, b_torch)
 print("p_rimon: ", p_rimon)
 print("alpha_dx: ", alpha_dx)
 print("alpha_dxdx: ", alpha_dxdx)
