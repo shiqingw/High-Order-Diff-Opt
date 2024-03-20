@@ -43,29 +43,42 @@ A_torch = A_torch.repeat(N,1,1)
 a_torch = a_torch.repeat(N,1)
 B_torch = B_torch.repeat(N,1,1)
 b_torch = b_torch.repeat(N,1)
+quat_torch = quat_torch.repeat(N,1)
+D_torch = D_torch.repeat(N,1,1)
+
 
 # Compute the gradient
 print("==> Compute the gradient")
 
-number = 10000
-print("Avg time to compute the gradient: ",
-      timeit.timeit('DO.get_gradient(a_torch, quat_torch, D_torch, R_torch, B_torch, b_torch)', globals=globals(), number=number)/number)
+# number = 1000
+# print("Avg time to compute the gradient: ",
+#       timeit.timeit('DO.get_gradient(a_torch, quat_torch, D_torch, R_torch, B_torch, b_torch)', globals=globals(), number=number)/number)
 # with profile(activities=[ProfilerActivity.CPU], record_shapes=True) as prof_gradient:
 #     with record_function("get_gradient"):
 #         p_rimon, alpha_dx = DO.get_gradient(a_torch, quat_torch, D_torch, R_torch, B_torch, b_torch)
+
+# traced_get_gradient = torch.jit.trace(DO.get_gradient, (a_torch, quat_torch, D_torch, R_torch, B_torch, b_torch))
+# print("Avg time to compute the gradient using trace: ",
+#       timeit.timeit('traced_get_gradient(a_torch, quat_torch, D_torch, R_torch, B_torch, b_torch)', globals=globals(), number=number)/number)
 
 p_rimon, alpha_dx = DO.get_gradient(a_torch, quat_torch, D_torch, R_torch, B_torch, b_torch)
 print("p_rimon: ", p_rimon)
 print("alpha_dx: ", alpha_dx)
 
+
 # Compute the gradient and hessian
 print("==> Compute the gradient and hessian")
 
-print("Avg time to compute the gradient and hessian: ",
-        timeit.timeit('DO.get_gradient_and_hessian(a_torch, quat_torch, D_torch, R_torch, B_torch, b_torch)', globals=globals(), number=number)/number)
+# print("Avg time to compute the gradient and hessian: ",
+#         timeit.timeit('DO.get_gradient_and_hessian(a_torch, quat_torch, D_torch, R_torch, B_torch, b_torch)', globals=globals(), number=number)/number)
 # with profile(activities=[ProfilerActivity.CPU], record_shapes=True) as prof_gradient_hessian:
 #     with record_function("get_gradient_and_hessian"):
 #         p_rimon, alpha_dx, alpha_dxdx = DO.get_gradient_and_hessian(a_torch, quat_torch, D_torch, R_torch, B_torch, b_torch)
+
+# traced_get_gradient_and_hessian = torch.jit.trace(DO.get_gradient_and_hessian, (a_torch, quat_torch, D_torch, R_torch, B_torch, b_torch))
+# print("Avg time to compute the gradient using trace: ",
+#       timeit.timeit('traced_get_gradient_and_hessian(a_torch, quat_torch, D_torch, R_torch, B_torch, b_torch)', globals=globals(), number=number)/number)
+
 
 p_rimon, alpha_dx, alpha_dxdx = DO.get_gradient_and_hessian(a_torch, quat_torch, D_torch, R_torch, B_torch, b_torch)
 print("p_rimon: ", p_rimon)

@@ -41,8 +41,6 @@ class Ellipsoid_Quat_Pos():
         """
         
         batch_size, dim_p = a_torch.shape
-        if dim_p != 3:
-            raise NotImplementedError("dim_p must be 3")
         
         # y = [A11, A12, A13, A22, A23, A33, a1, a2, a3]
         A_torch = torch.matmul(torch.matmul(R_torch, D_torch), R_torch.transpose(-1,-2)) # shape (batch_size, dim(p), dim(p))
@@ -87,8 +85,6 @@ class Ellipsoid_Quat_Pos():
         """
 
         batch_size, dim_p = a_torch.shape
-        if dim_p != 3:
-            raise NotImplementedError("dim_p must be 3")
         
         # y = [A11, A12, A13, A22, A23, A33, a1, a2, a3]
         A_torch = torch.matmul(torch.matmul(R_torch, D_torch), R_torch.transpose(-1,-2)) # shape (batch_size, dim(p), dim(p))

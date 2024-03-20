@@ -269,17 +269,12 @@ class Ellipsoid_Symmetric():
         dim_p = A.shape[-1]
         vector = p - a
         tmp1 = torch.zeros((batch_size, dim_p, (dim_p+1)*dim_p//2), dtype=A.dtype, device=A.device)
-        if dim_p == 2:
-            tmp1[:,0,0:2] = 2*vector
-            tmp1[:,1,1:3] = 2*vector
-        elif dim_p == 3:
-            tmp1[:,0,0:3] = 2*vector
-            tmp1[:,1,1] = 2*vector[:,0]
-            tmp1[:,1,3:5] = 2*vector[:,1:3]
-            tmp1[:,2,2] = 2*vector[:,0]
-            tmp1[:,2,4:6] = 2*vector[:,1:3]
-        else: 
-            raise NotImplementedError("Only implemented for dim_p = 2 or 3")
+        tmp1[:,0,0:3] = 2*vector
+        tmp1[:,1,1] = 2*vector[:,0]
+        tmp1[:,1,3:5] = 2*vector[:,1:3]
+        tmp1[:,2,2] = 2*vector[:,0]
+        tmp1[:,2,4:6] = 2*vector[:,1:3]
+        
 
         tmp2 = - 2*A # shape (batch_size, dim(p), dim(p))
 
@@ -303,17 +298,12 @@ class Ellipsoid_Symmetric():
         total = torch.zeros((batch_size, dim_x, dim_x), dtype=A.dtype, device=A.device)
         vector = a - p
         tmp = torch.zeros((batch_size, dim_p, dim_A_flat), dtype=A.dtype, device=A.device)
-        if dim_p == 2:
-            tmp[:,0,0:2] = 2*vector
-            tmp[:,1,1:3] = 2*vector
-        elif dim_p == 3:
-            tmp[:,0,0:3] = 2*vector
-            tmp[:,1,1] = 2*vector[:,0]
-            tmp[:,1,3:5] = 2*vector[:,1:3]
-            tmp[:,2,2] = 2*vector[:,0]
-            tmp[:,2,4:6] = 2*vector[:,1:3]
-        else: 
-            raise NotImplementedError("Only implemented for dim_p = 2 or 3")
+        tmp[:,0,0:3] = 2*vector
+        tmp[:,1,1] = 2*vector[:,0]
+        tmp[:,1,3:5] = 2*vector[:,1:3]
+        tmp[:,2,2] = 2*vector[:,0]
+        tmp[:,2,4:6] = 2*vector[:,1:3]
+        
         total[:,dim_A_flat:dim_x,0:dim_A_flat] = tmp
         total[:,0:dim_A_flat,dim_A_flat:dim_x] = tmp.transpose(-1,-2)
         total[:,dim_A_flat:dim_x,dim_A_flat:dim_x] = 2*A
