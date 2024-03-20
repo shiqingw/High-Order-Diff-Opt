@@ -112,8 +112,8 @@ def get_gradient_and_hessian_pytorch(dual_var, F1_dp, F2_dp, F1_dx, F2_dx, F1_dp
     tmp = F2_dpdxdx + torch.einsum('bijk,bkl->bijl', F2_dpdxdp, p_dx) # shape (batch_size, dim(p), dim(x), dim(x))
     b1_dx_2 = - torch.einsum('bij,bk->bijk', F2_dpdx, dual_dx) - torch.einsum('b,bijk->bijk', dual_var, tmp) # shape (batch_size, dim(p), dim(x), dim(x))
     b1_dx = b1_dx_1 + b1_dx_2 # shape (batch_size, dim(p), dim(x), dim(x))
-    F2_dx_dp = F2_dpdx.transpose(-1, -2) # shape (batch_size, dim(x), dim(p))
-    b2_dx = - F2_dxdx.unsqueeze(-3) - torch.matmul(F2_dx_dp, p_dx).unsqueeze(-3) # shape (batch_size, 1, dim(x), dim(x))
+    F2_dxdp = F2_dpdx.transpose(-1, -2) # shape (batch_size, dim(x), dim(p))
+    b2_dx = - F2_dxdx.unsqueeze(-3) - torch.matmul(F2_dxdp, p_dx).unsqueeze(-3) # shape (batch_size, 1, dim(x), dim(x))
     b_dx = torch.cat([b1_dx, b2_dx], dim=1) # shape (batch_size, dim(p) + 1, dim(x), dim(x))
 
     A11_dx_1 = F1_dpdpdx + torch.einsum('bijk,bkl->bijl', F1_dpdpdp, p_dx) # shape (batch_size, dim(p), dim(p), dim(x))

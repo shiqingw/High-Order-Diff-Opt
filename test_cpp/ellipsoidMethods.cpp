@@ -240,3 +240,174 @@ xt::xarray<double> F_dpdydy(const xt::xarray<double>& A) {
 
     return F_dpdpdy;
 }
+
+xt::xarray<double> RDRT_dq(const xt::xarray<double>& q, const xt::xarray<double>& D, const xt::xarray<double>& R){
+    // Compute d(R @ D @ R.T)/dq
+    // q: input vector of dimension 4
+    // D: diagonal matrix of dimension 3 x 3
+    // R: rotation matrix of dimension 3 x 3
+    double qx = q(0), qy = q(1), qz = q(2), qw = q(3);
+    double a = D(0,0), b = D(1,1), c = D(2,2);
+    double r11 = R(0,0), r12 = R(0,1), r13 = R(0,2);
+    double r21 = R(1,0), r22 = R(1,1), r23 = R(1,2);
+    double r31 = R(2,0), r32 = R(2,1), r33 = R(2,2);
+
+    xt::xarray<double> M11_dq {8*a*qx*r11 + 4*b*qy*r12 + 4*c*qz*r13,
+                                4*b*qx*r12 + 4*c*qw*r13,
+                                -4*b*qw*r12 + 4*c*qx*r13,
+                                8*a*qw*r11 - 4*b*qz*r12 + 4*c*qy*r13};
+
+    xt::xarray<double> M12_dq {4*a*qx*r21 + 2*a*qy*r11 + 2*b*qy*r22 - 2*c*qw*r13 + 2*c*qz*r23,
+                                2*a*qx*r11 + 2*b*qx*r22 + 4*b*qy*r12 + 2*c*qw*r23 + 2*c*qz*r13,
+                                2*a*qw*r11 - 2*b*qw*r22 + 2*c*qx*r23 + 2*c*qy*r13,
+                                4*a*qw*r21 + 2*a*qz*r11 + 4*b*qw*r12 - 2*b*qz*r22 - 2*c*qx*r13 + 2*c*qy*r23};
+
+    xt::xarray<double> M13_dq {4*a*qx*r31 + 2*a*qz*r11 + 2*b*qw*r12 + 2*b*qy*r32 + 2*c*qz*r33,
+                                -2*a*qw*r11 + 2*b*qx*r32 + 2*b*qz*r12 + 2*c*qw*r33,
+                                2*a*qx*r11 - 2*b*qw*r32 + 2*b*qy*r12 + 2*c*qx*r33 + 4*c*qz*r13,
+                                4*a*qw*r31 - 2*a*qy*r11 + 2*b*qx*r12 - 2*b*qz*r32 + 4*c*qw*r13 + 2*c*qy*r33};
+
+    xt::xarray<double> M22_dq {4*a*qy*r21 - 4*c*qw*r23,
+                                4*a*qx*r21 + 8*b*qy*r22 + 4*c*qz*r23,
+                                4*a*qw*r21 + 4*c*qy*r23,
+                                4*a*qz*r21 + 8*b*qw*r22 - 4*c*qx*r23};
+
+    xt::xarray<double> M23_dq {2*a*qy*r31 + 2*a*qz*r21 + 2*b*qw*r22 - 2*c*qw*r33,
+                                -2*a*qw*r21 + 2*a*qx*r31 + 4*b*qy*r32 + 2*b*qz*r22 + 2*c*qz*r33,
+                                2*a*qw*r31 + 2*a*qx*r21 + 2*b*qy*r22 + 2*c*qy*r33 + 4*c*qz*r23,
+                                -2*a*qy*r21 + 2*a*qz*r31 + 4*b*qw*r32 + 2*b*qx*r22 + 4*c*qw*r23 - 2*c*qx*r33};
+
+    xt::xarray<double> M33_dq {4*a*qz*r31 + 4*b*qw*r32,
+                                -4*a*qw*r31 + 4*b*qz*r32,
+                                4*a*qx*r31 + 4*b*qy*r32 + 8*c*qz*r33,
+                                -4*a*qy*r31 + 4*b*qx*r32 + 8*c*qw*r33};                        
+
+    xt::xarray<double> RDRT_dq = xt::zeros<double>({6, 4});
+    xt::view(RDRT_dq, 0, xt::all()) = M11_dq;
+    xt::view(RDRT_dq, 1, xt::all()) = M12_dq;
+    xt::view(RDRT_dq, 2, xt::all()) = M13_dq;
+    xt::view(RDRT_dq, 3, xt::all()) = M22_dq;
+    xt::view(RDRT_dq, 4, xt::all()) = M23_dq;
+    xt::view(RDRT_dq, 5, xt::all()) = M33_dq;
+
+    return RDRT_dq;
+}
+
+xt::xarray<double> RDRT_dqdq(const xt::xarray<double>& q, const xt::xarray<double>& D){
+    // Compute d^2(R @ D @ R.T)/dqdq
+    // q: input vector of dimension 4
+    // D: diagonal matrix of dimension 3 x 3
+    // R: rotation matrix of dimension 3 x 3
+
+    double qx = q(0), qy = q(1), qz = q(2), qw = q(3);
+    double a = D(0,0), b = D(1,1), c = D(2,2);
+
+    double pxx = qx*qx, pxy = qx*qy, pxz = qx*qz, pxw = qx*qw, pyy = qy*qy;
+    double pyz = qy*qz, pyw = qy*qw, pzz = qz*qz, pzw = qz*qw, pww = qw*qw;
+
+    double M11_dqdq_11 = 16*a*pww + 48*a*pxx - 8*a + 8*b*pyy + 8*c*pzz;
+    double M11_dqdq_12 = 16*b*pxy - 8*b*pzw + 8*c*pzw;
+    double M11_dqdq_13 = -8*b*pyw + 16*c*pxz + 8*c*pyw;
+    double M11_dqdq_14 = 32*a*pxw - 8*b*pyz + 8*c*pyz;
+    double M11_dqdq_22 = 8*b*pxx + 8*c*pww;
+    double M11_dqdq_23 = 8*pxw*(-b + c);
+    double M11_dqdq_24 = -8*b*pxz + 8*c*pxz + 16*c*pyw;
+    double M11_dqdq_33 = 8*b*pww + 8*c*pxx;
+    double M11_dqdq_34 = -8*b*pxy + 16*b*pzw + 8*c*pxy;
+    double M11_dqdq_44 = 48*a*pww + 16*a*pxx - 8*a + 8*b*pzz + 8*c*pyy;
+
+    xt::xarray<double> M11_dqdq {{M11_dqdq_11, M11_dqdq_12, M11_dqdq_13, M11_dqdq_14},
+                                {M11_dqdq_12, M11_dqdq_22, M11_dqdq_23, M11_dqdq_24},
+                                {M11_dqdq_13, M11_dqdq_23, M11_dqdq_33, M11_dqdq_34},
+                                {M11_dqdq_14, M11_dqdq_24, M11_dqdq_34, M11_dqdq_44}};
+
+    double M12_dqdq_11 = 24*a*pxy + 8*a*pzw - 8*c*pzw;
+    double M12_dqdq_12 = 4*a*pww + 12*a*pxx - 2*a + 4*b*pww + 12*b*pyy - 2*b - 4*c*pww + 4*c*pzz;
+    double M12_dqdq_13 = 8*a*pxw - 8*c*pxw + 8*c*pyz;
+    double M12_dqdq_14 = 8*a*pxz + 8*a*pyw + 8*b*pyw - 8*c*pxz - 8*c*pyw;
+    double M12_dqdq_22 = 24*b*pxy - 8*b*pzw + 8*c*pzw;
+    double M12_dqdq_23 = -8*b*pyw + 8*c*pxz + 8*c*pyw;
+    double M12_dqdq_24 = 8*a*pxw + 8*b*pxw - 8*b*pyz - 8*c*pxw + 8*c*pyz;
+    double M12_dqdq_33 = 8*c*pxy;
+    double M12_dqdq_34 = 12*a*pww + 4*a*pxx - 2*a - 12*b*pww - 4*b*pyy + 2*b - 4*c*pxx + 4*c*pyy;
+    double M12_dqdq_44 = 8*a*pxy + 24*a*pzw + 8*b*pxy - 24*b*pzw - 8*c*pxy;
+
+    xt::xarray<double> M12_dqdq {{M12_dqdq_11, M12_dqdq_12, M12_dqdq_13, M12_dqdq_14},
+                                {M12_dqdq_12, M12_dqdq_22, M12_dqdq_23, M12_dqdq_24},
+                                {M12_dqdq_13, M12_dqdq_23, M12_dqdq_33, M12_dqdq_34},
+                                {M12_dqdq_14, M12_dqdq_24, M12_dqdq_34, M12_dqdq_44}};
+
+    double M13_dqdq_11 = 24*a*pxz - 8*a*pyw + 8*b*pyw;
+    double M13_dqdq_12 = -8*a*pxw + 8*b*pxw + 8*b*pyz;
+    double M13_dqdq_13 = 4*a*pww + 12*a*pxx - 2*a - 4*b*pww + 4*b*pyy + 4*c*pww + 12*c*pzz - 2*c;
+    double M13_dqdq_14 = -8*a*pxy + 8*a*pzw + 8*b*pxy - 8*b*pzw + 8*c*pzw;
+    double M13_dqdq_22 = 8*b*pxz;
+    double M13_dqdq_23 = 8*b*pxy - 8*b*pzw + 8*c*pzw;
+    double M13_dqdq_24 = -12*a*pww - 4*a*pxx + 2*a + 4*b*pxx - 4*b*pzz + 12*c*pww + 4*c*pzz - 2*c;
+    double M13_dqdq_33 = -8*b*pyw + 24*c*pxz + 8*c*pyw;
+    double M13_dqdq_34 = 8*a*pxw - 8*b*pxw - 8*b*pyz + 8*c*pxw + 8*c*pyz;
+    double M13_dqdq_44 = 8*a*pxz - 24*a*pyw - 8*b*pxz + 8*c*pxz + 24*c*pyw;
+
+    xt::xarray<double> M13_dqdq {{M13_dqdq_11, M13_dqdq_12, M13_dqdq_13, M13_dqdq_14},
+                                {M13_dqdq_12, M13_dqdq_22, M13_dqdq_23, M13_dqdq_24},
+                                {M13_dqdq_13, M13_dqdq_23, M13_dqdq_33, M13_dqdq_34},
+                                {M13_dqdq_14, M13_dqdq_24, M13_dqdq_34, M13_dqdq_44}};
+    
+    double M22_dqdq_11 = 8*a*pyy + 8*c*pww;
+    double M22_dqdq_12 = 16*a*pxy + 8*a*pzw - 8*c*pzw;
+    double M22_dqdq_13 = 8*pyw*(a - c);
+    double M22_dqdq_14 = 8*a*pyz + 16*c*pxw - 8*c*pyz;
+    double M22_dqdq_22 = 8*a*pxx + 16*b*pww + 48*b*pyy - 8*b + 8*c*pzz;
+    double M22_dqdq_23 = 8*a*pxw - 8*c*pxw + 16*c*pyz;
+    double M22_dqdq_24 = 8*a*pxz + 32*b*pyw - 8*c*pxz;
+    double M22_dqdq_33 = 8*a*pww + 8*c*pyy;
+    double M22_dqdq_34 = 8*a*pxy + 16*a*pzw - 8*c*pxy;
+    double M22_dqdq_44 = 8*a*pzz + 48*b*pww + 16*b*pyy - 8*b + 8*c*pxx;
+
+    xt::xarray<double> M22_dqdq {{M22_dqdq_11, M22_dqdq_12, M22_dqdq_13, M22_dqdq_14},
+                                {M22_dqdq_12, M22_dqdq_22, M22_dqdq_23, M22_dqdq_24},
+                                {M22_dqdq_13, M22_dqdq_23, M22_dqdq_33, M22_dqdq_34},
+                                {M22_dqdq_14, M22_dqdq_24, M22_dqdq_34, M22_dqdq_44}};
+
+    double M23_dqdq_11 = 8*a*pyz;
+    double M23_dqdq_12 = 8*a*pxz - 8*a*pyw + 8*b*pyw;
+    double M23_dqdq_13 = 8*a*pxy + 8*a*pzw - 8*c*pzw;
+    double M23_dqdq_14 = -4*a*pyy + 4*a*pzz + 12*b*pww + 4*b*pyy - 2*b - 12*c*pww - 4*c*pzz + 2*c;
+    double M23_dqdq_22 = -8*a*pxw + 8*b*pxw + 24*b*pyz;
+    double M23_dqdq_23 = -4*a*pww + 4*a*pxx + 4*b*pww + 12*b*pyy - 2*b + 4*c*pww + 12*c*pzz - 2*c;
+    double M23_dqdq_24 = -8*a*pxy - 8*a*pzw + 8*b*pxy + 8*b*pzw + 8*c*pzw;
+    double M23_dqdq_33 = 8*a*pxw - 8*c*pxw + 24*c*pyz;
+    double M23_dqdq_34 = 8*a*pxz - 8*a*pyw + 8*b*pyw - 8*c*pxz + 8*c*pyw;
+    double M23_dqdq_44 = -8*a*pyz + 24*b*pxw + 8*b*pyz - 24*c*pxw + 8*c*pyz;
+
+    xt::xarray<double> M23_dqdq {{M23_dqdq_11, M23_dqdq_12, M23_dqdq_13, M23_dqdq_14},
+                                {M23_dqdq_12, M23_dqdq_22, M23_dqdq_23, M23_dqdq_24},
+                                {M23_dqdq_13, M23_dqdq_23, M23_dqdq_33, M23_dqdq_34},
+                                {M23_dqdq_14, M23_dqdq_24, M23_dqdq_34, M23_dqdq_44}};
+
+    double M33_dqdq_11 = 8*a*pzz + 8*b*pww;
+    double M33_dqdq_12 = 8*pzw*(-a + b);
+    double M33_dqdq_13 = 16*a*pxz - 8*a*pyw + 8*b*pyw;
+    double M33_dqdq_14 = -8*a*pyz + 16*b*pxw + 8*b*pyz;
+    double M33_dqdq_22 = 8*a*pww + 8*b*pzz;
+    double M33_dqdq_23 = -8*a*pxw + 8*b*pxw + 16*b*pyz;
+    double M33_dqdq_24 = -8*a*pxz + 16*a*pyw + 8*b*pxz;
+    double M33_dqdq_33 = 8*a*pxx + 8*b*pyy + 16*c*pww + 48*c*pzz - 8*c;
+    double M33_dqdq_34 = -8*a*pxy + 8*b*pxy + 32*c*pzw;
+    double M33_dqdq_44 = 8*a*pyy + 8*b*pxx + 48*c*pww + 16*c*pzz - 8*c;
+
+    xt::xarray<double> M33_dqdq {{M33_dqdq_11, M33_dqdq_12, M33_dqdq_13, M33_dqdq_14},
+                                {M33_dqdq_12, M33_dqdq_22, M33_dqdq_23, M33_dqdq_24},
+                                {M33_dqdq_13, M33_dqdq_23, M33_dqdq_33, M33_dqdq_34},
+                                {M33_dqdq_14, M33_dqdq_24, M33_dqdq_34, M33_dqdq_44}};
+
+    xt::xarray<double> RDRT_dqdq = xt::zeros<double>({6,4,4});
+    xt::view(RDRT_dqdq, 0, xt::all(), xt::all()) = M11_dqdq;
+    xt::view(RDRT_dqdq, 1, xt::all(), xt::all()) = M12_dqdq;
+    xt::view(RDRT_dqdq, 2, xt::all(), xt::all()) = M13_dqdq;
+    xt::view(RDRT_dqdq, 3, xt::all(), xt::all()) = M22_dqdq;
+    xt::view(RDRT_dqdq, 4, xt::all(), xt::all()) = M23_dqdq;
+    xt::view(RDRT_dqdq, 5, xt::all(), xt::all()) = M33_dqdq;
+
+    return RDRT_dqdq;
+}
