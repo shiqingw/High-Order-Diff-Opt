@@ -5,7 +5,6 @@
             "includePath": [
                 "${workspaceFolder}/**",
                 "~/anaconda3/envs/py311/include/**",
-                "~/anaconda3/envs/py311/include/spectra/include",
                 "~/anaconda3/envs/py311/lib/python3.11/site-packages/**"
             ],
             "defines": [],

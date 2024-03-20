@@ -18,9 +18,9 @@ A = np.array([[2, 0.1, 0.3],
 # print(sp.linalg.eigvals(A))
 
 b = np.array([3.3, 3.2, 3.1], dtype=config.np_dtype)
-B = np.array([[1, 0.1, 0.3],
-              [0.1, 3, 0.2],
-              [0.3, 0.2, 1]], dtype=config.np_dtype)
+B = np.array([[1, 0.01, 0.03],
+              [0.01, 3, 0.02],
+              [0.03, 0.02, 1]], dtype=config.np_dtype)
 # print(sp.linalg.eigvals(B))
 
 p_rimon = rimon_method_numpy(A, a, B, b)

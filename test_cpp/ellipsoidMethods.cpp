@@ -89,7 +89,7 @@ xt::xarray<double> rimonMethodXtensor(const xt::xarray<double>& A, const xt::xar
     xt::view(M, xt::range(0, nv), xt::range(0, nv)) = C_tilde;
     xt::view(M, xt::range(nv, 2*nv), xt::range(nv, 2*nv)) = C_tilde;
     xt::view(M, xt::range(0, nv), xt::range(nv, 2*nv)) = -xt::eye(nv);
-    xt::view(M, xt::range(nv, 2*nv), xt::range(0, nv)) = -c_tilde * xt::transpose(c_tilde);
+    xt::view(M, xt::range(nv, 2*nv), xt::range(0, nv)) = xt::linalg::outer(-c_tilde, xt::transpose(c_tilde));
 
     // Compute the smallest eigenvalue of M
     xt::xarray<double> eigenval_real = xt::real(xt::linalg::eigvals(M));
@@ -104,6 +104,7 @@ xt::xarray<double> rimonMethodXtensor(const xt::xarray<double>& A, const xt::xar
     // xt::xarray<double> L = -xt::linalg::cholesky(-lambda_min * C + xt::eye(nv));
     xt::xarray<double> x_rimon = xt::linalg::solve(lambda_min * C - xt::eye(nv), xt::linalg::dot(C, c)); 
     x_rimon = a + lambda_min * xt::linalg::solve(xt::transpose(A_sqrt), x_rimon);
+    
     return x_rimon;
 }
 

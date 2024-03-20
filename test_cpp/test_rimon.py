@@ -21,7 +21,7 @@ B = np.array([[1, 0.1, 0.1],
               [0.1, 0.1, 1]], dtype=config.np_dtype)
 # print(sp.linalg.eigvals(B))
 
-number = 100
+number = 1000
 print("C++ Eigen time:", timeit.timeit(lambda: diffOptEllipsoidCpp.rimonMethod(A, a, B, b), number=number)/1000)
 x_rimon = diffOptEllipsoidCpp.rimonMethod(A, a, B, b)
 print(x_rimon)
