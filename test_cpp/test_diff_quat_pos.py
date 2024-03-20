@@ -2,9 +2,9 @@ import sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 import numpy as np
+import diffOptEllipsoidCpp as DOE
 import torch
 import timeit
-# import diffOptEllipsoidCpp as DOE
 from cores.differentiable_optimization.quat_diff_utils import Quaternion_RDRT
 from cores.differentiable_optimization.ellipsoid_quat_pos import Ellipsoid_Quat_Pos
 from cores.utils.rotation_utils import get_rot_matrix_from_quat, get_quat_from_rot_matrix, get_rot_matrix_from_euler_zyx
@@ -49,11 +49,12 @@ D_torch = D_torch.repeat(N,1,1)
 
 
 # Compute the gradient
-print("==> Compute the gradient")
+# print("==> Compute the gradient")
 
-# number = 1000
-# print("Avg time to compute the gradient: ",
+number = 10000
+# print("Avg time to compute the gradient pytorch: ",
 #       timeit.timeit('DO.get_gradient(a_torch, quat_torch, D_torch, R_torch, B_torch, b_torch)', globals=globals(), number=number)/number)
+
 # with profile(activities=[ProfilerActivity.CPU], record_shapes=True) as prof_gradient:
 #     with record_function("get_gradient"):
 #         p_rimon, alpha_dx = DO.get_gradient(a_torch, quat_torch, D_torch, R_torch, B_torch, b_torch)
@@ -62,9 +63,12 @@ print("==> Compute the gradient")
 # print("Avg time to compute the gradient using trace: ",
 #       timeit.timeit('traced_get_gradient(a_torch, quat_torch, D_torch, R_torch, B_torch, b_torch)', globals=globals(), number=number)/number)
 
-p_rimon_torch, alpha_dx_torch = DO.get_gradient(a_torch, quat_torch, D_torch, R_torch, B_torch, b_torch)
-print("p_rimon_torch: ", p_rimon_torch)
-print("alpha_dx_torch: ", alpha_dx_torch)
+# p_rimon_torch, alpha_dx_torch = DO.get_gradient(a_torch, quat_torch, D_torch, R_torch, B_torch, b_torch)
+# print("p_rimon_torch: ", p_rimon_torch)
+# print("alpha_dx_torch: ", alpha_dx_torch)
+
+# print("Avg time to compute the gradient C++: ",
+#       timeit.timeit('DOE.getGradientEllipsoid(a, quat, D, R, B, b)', globals=globals(), number=number)/number)
 
 # F, p_rimon, alpha_dx = DOE.getGradientEllipsoid(a, quat, D, R, B, b)
 # print("F: ", F)
@@ -76,6 +80,7 @@ print("alpha_dx_torch: ", alpha_dx_torch)
 
 # print("Avg time to compute the gradient and hessian: ",
 #         timeit.timeit('DO.get_gradient_and_hessian(a_torch, quat_torch, D_torch, R_torch, B_torch, b_torch)', globals=globals(), number=number)/number)
+
 # with profile(activities=[ProfilerActivity.CPU], record_shapes=True) as prof_gradient_hessian:
 #     with record_function("get_gradient_and_hessian"):
 #         p_rimon, alpha_dx, alpha_dxdx = DO.get_gradient_and_hessian(a_torch, quat_torch, D_torch, R_torch, B_torch, b_torch)
@@ -84,30 +89,40 @@ print("alpha_dx_torch: ", alpha_dx_torch)
 # print("Avg time to compute the gradient using trace: ",
 #       timeit.timeit('traced_get_gradient_and_hessian(a_torch, quat_torch, D_torch, R_torch, B_torch, b_torch)', globals=globals(), number=number)/number)
 
+print("Avg time to compute the gradient and hessian C++s: ",
+        timeit.timeit('DOE.getGradientAndHessianEllipsoid(a, quat, D, R, B, b)', globals=globals(), number=number)/number)
 
-# p_rimon, alpha_dx, alpha_dxdx = DO.get_gradient_and_hessian(a_torch, quat_torch, D_torch, R_torch, B_torch, b_torch)
-# print("p_rimon: ", p_rimon)
-# print("alpha_dx: ", alpha_dx)
-# print("alpha_dxdx: ", alpha_dxdx)
 
-# euler = [0.01,0.01,0.01]
-# R_new = get_rot_matrix_from_euler_zyx(euler)
-# quat_new = get_quat_from_rot_matrix(R_new)
-# print(quat_new)
-# quat_new_torch_original = torch.tensor(quat_new, dtype=config.torch_dtype)
-# quat_new_torch = quat_new_torch_original.unsqueeze(0)
-# R_new_torch_original = torch.tensor(R_new, dtype=config.torch_dtype)
-# R_new_torch = R_new_torch_original.unsqueeze(0)
-# a_new = np.array([0.01, 0.01, 0.01], dtype=config.np_dtype)
-# a_new_torch_original = torch.tensor(a_new, dtype=config.torch_dtype)
-# a_new_torch = a_new_torch_original.unsqueeze(0)
-# A_new_torch = torch.matmul(torch.matmul(R_new_torch, D_torch), R_new_torch.transpose(-1,-2))
-# alpha_dx_new = DO.get_gradient(A_new_torch, a_new_torch, B_torch, b_torch, quat_new_torch, D_torch)
-# dx = torch.cat((quat_new_torch - quat_torch, a_new_torch - a_torch), dim=1)
-# alpha_dx_anticipated = alpha_dx + torch.matmul(alpha_dxdx, dx.unsqueeze(-1)).squeeze(-1)
-# print("dx:", dx)
-# print("alpha_dx:", alpha_dx)
-# print("alpha_dx_new:", alpha_dx_new)
-# print("alpha_dx_anticipated:", alpha_dx_anticipated)
-# prof_gradient.export_chrome_trace("trace_grdient.json")
-# prof_gradient_hessian.export_chrome_trace("trace_grdient_hessian.json")
+F, p_rimon, alpha_dx, alpha_dxdx = DOE.getGradientAndHessianEllipsoid(a, quat, D, R, B, b)
+print("F: ", F)
+print("p: ", p_rimon)
+print("alpha_dx: ", alpha_dx)
+print("alpha_dxdx: ", alpha_dxdx)
+
+p_rimon_torch, alpha_dx_torch, alpha_dxdx_torch = DO.get_gradient_and_hessian(a_torch, quat_torch, D_torch, R_torch, B_torch, b_torch)
+print("p_rimon_torch: ", p_rimon_torch)
+print("alpha_dx_torch: ", alpha_dx_torch)
+print("alpha_dxdx_torch: ", alpha_dxdx_torch)
+
+
+# # euler = [0.01,0.01,0.01]
+# # R_new = get_rot_matrix_from_euler_zyx(euler)
+# # quat_new = get_quat_from_rot_matrix(R_new)
+# # print(quat_new)
+# # quat_new_torch_original = torch.tensor(quat_new, dtype=config.torch_dtype)
+# # quat_new_torch = quat_new_torch_original.unsqueeze(0)
+# # R_new_torch_original = torch.tensor(R_new, dtype=config.torch_dtype)
+# # R_new_torch = R_new_torch_original.unsqueeze(0)
+# # a_new = np.array([0.01, 0.01, 0.01], dtype=config.np_dtype)
+# # a_new_torch_original = torch.tensor(a_new, dtype=config.torch_dtype)
+# # a_new_torch = a_new_torch_original.unsqueeze(0)
+# # A_new_torch = torch.matmul(torch.matmul(R_new_torch, D_torch), R_new_torch.transpose(-1,-2))
+# # alpha_dx_new = DO.get_gradient(A_new_torch, a_new_torch, B_torch, b_torch, quat_new_torch, D_torch)
+# # dx = torch.cat((quat_new_torch - quat_torch, a_new_torch - a_torch), dim=1)
+# # alpha_dx_anticipated = alpha_dx + torch.matmul(alpha_dxdx, dx.unsqueeze(-1)).squeeze(-1)
+# # print("dx:", dx)
+# # print("alpha_dx:", alpha_dx)
+# # print("alpha_dx_new:", alpha_dx_new)
+# # print("alpha_dx_anticipated:", alpha_dx_anticipated)
+# # prof_gradient.export_chrome_trace("trace_grdient.json")
+# # prof_gradient_hessian.export_chrome_trace("trace_grdient_hessian.json")

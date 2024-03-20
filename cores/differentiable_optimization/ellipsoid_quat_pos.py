@@ -54,8 +54,7 @@ class Ellipsoid_Quat_Pos():
         F1_dpdy = self.SF.F_dpdx(p_rimon, A_torch, a_torch)
         F2_dpdy = torch.zeros_like(F1_dpdy)
         dual_vars = get_dual_variable_pytorch(F1_dp, F2_dp)
-        alpha_dy = get_gradient_pytorch(dual_vars, F1_dp, F2_dp, F1_dy, F2_dy, F1_dpdp, F2_dpdp,
-                                        F1_dpdy, F2_dpdy) # shape (batch_size, 9)
+        alpha_dy = get_gradient_pytorch(dual_vars, F1_dp, F2_dp, F1_dy, F2_dy, F1_dpdp, F2_dpdp, F1_dpdy, F2_dpdy) # shape (batch_size, 9)
         
         # Compute the gradient wrt x = [qx, qy, qz, qw, a1, a2, a3]
         RDRT_dq = self.RDRT.RDRT_dq(q_torch, D_torch, R_torch) # shape (batch_size, 6, 4)

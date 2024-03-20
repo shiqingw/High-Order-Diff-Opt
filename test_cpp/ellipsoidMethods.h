@@ -16,3 +16,6 @@ xt::xarray<double> RDRT_dqdq(const xt::xarray<double>& q, const xt::xarray<doubl
 std::tuple<double, xt::xarray<double>, xt::xarray<double>> getGradientEllipsoid(const xt::xarray<double>& a,
     const xt::xarray<double>& q, const xt::xarray<double>& D, const xt::xarray<double>& R,
     const xt::xarray<double>& B, const xt::xarray<double>& b);
+std::tuple<double, xt::xarray<double>, xt::xarray<double>, xt::xarray<double>> getGradientAndHessianEllipsoid(
+    const xt::xarray<double>& a, const xt::xarray<double>& q, const xt::xarray<double>& D,
+    const xt::xarray<double>& R, const xt::xarray<double>& B, const xt::xarray<double>& b);
