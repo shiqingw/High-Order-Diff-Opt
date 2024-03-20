@@ -108,13 +108,13 @@ xt::xarray<double> rimonMethodXtensor(const xt::xarray<double>& A, const xt::xar
     return x_rimon;
 }
 
-xt::xarray<double> F(const xt::xarray<double>& p, const xt::xarray<double>& a, const xt::xarray<double>& A) {
+double F(const xt::xarray<double>& p, const xt::xarray<double>& a, const xt::xarray<double>& A) {
     // Compute F(p)
     // p: input vector of dimension 3
     // a: center of the ellipsoid, dimension 3
     // A: real symmetric quadratic coefficient matrix, dimension 3 x 3
 
-    return xt::linalg::dot(p - a, xt::linalg::dot(A, p - a));
+    return xt::linalg::dot(p - a, xt::linalg::dot(A, p - a))(0);
 }
 
 xt::xarray<double> F_dp(const xt::xarray<double>& p, const xt::xarray<double>& a, const xt::xarray<double>& A) {
@@ -410,4 +410,35 @@ xt::xarray<double> RDRT_dqdq(const xt::xarray<double>& q, const xt::xarray<doubl
     xt::view(RDRT_dqdq, 5, xt::all(), xt::all()) = M33_dqdq;
 
     return RDRT_dqdq;
+}
+
+std::tuple<double, xt::xarray<double>, xt::xarray<double>> getGradientEllipsoid(const xt::xarray<double>& a,
+    const xt::xarray<double>& q, const xt::xarray<double>& D, const xt::xarray<double>& R,
+    const xt::xarray<double>& B, const xt::xarray<double>& b){
+    
+    int dim_p = 3, dim_y = 9, dim_x = 7, dim_A_flat = 6, dim_q = 4;
+    xt::xarray<double> A = xt::linalg::dot(R, xt::linalg::dot(D, xt::transpose(R))); // shape dim_p x dim_p
+    xt::xarray<double> p = rimonMethodXtensor(A, a, B, b); // shape dim_p
+    double F1 = F(p, a, A); // scalar
+    xt::xarray<double> F1_dp = F_dp(p, a, A); // shape dim_p
+    xt::xarray<double> F2_dp = F_dp(p, b, B); // shape dim_p
+    xt::xarray<double> F1_dy = F_dy(p, a, A); // shape dim_y
+    xt::xarray<double> F2_dy = xt::zeros<double>({dim_y});
+    xt::xarray<double> F1_dpdp = F_dpdp(A); // shape dim_p x dim_p
+    xt::xarray<double> F2_dpdp = F_dpdp(B); // shape dim_p x dim_p
+    xt::xarray<double> F1_dpdy = F_dpdy(p, a, A); // shape dim_p x dim_y
+    xt::xarray<double> F2_dpdy = xt::zeros<double>({dim_p, dim_y});
+    double dual_var = getDualVariable(F1_dp, F2_dp);
+    xt::xarray<double> alpha_dy = getGradientGeneral(dual_var, F1_dp, F2_dp, F1_dy, F2_dy, F1_dpdp, F2_dpdp, F1_dpdy, F2_dpdy);
+
+    xt::xarray<double> M_dq = RDRT_dq(q, D, R); // shape dim_A_flat x dim_q
+    xt::xarray<double> y_dx = xt::zeros<double>({dim_y, dim_x}); // shape dim_y x dim_x
+    xt::view(y_dx, xt::range(0, dim_A_flat), xt::range(0, dim_q)) = M_dq;
+    y_dx(6,4) = 1;
+    y_dx(7,5) = 1;
+    y_dx(8,6) = 1;
+
+    xt::xarray<double> alpha_dx = xt::linalg::dot(alpha_dy, y_dx); // shape dim_x
+
+    return std::make_tuple(F1, p, alpha_dy);
 }

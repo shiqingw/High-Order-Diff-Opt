@@ -1,11 +1,11 @@
 #include <xtensor/xarray.hpp>
 #include <tuple>
 double getDualVariable(const xt::xarray<double>& F1_dp, const xt::xarray<double>& F2_dp);
-xt::xarray<double> getGradient(double dual_var, const xt::xarray<double>& F1_dp, const xt::xarray<double>& F2_dp,
+xt::xarray<double> getGradientGeneral(double dual_var, const xt::xarray<double>& F1_dp, const xt::xarray<double>& F2_dp,
     const xt::xarray<double>& F1_dx, const xt::xarray<double>& F2_dx,
     const xt::xarray<double>& F1_dpdp, const xt::xarray<double>& F2_dpdp,
     const xt::xarray<double>& F1_dpdx, const xt::xarray<double>& F2_dpdx);
-std::tuple<xt::xarray<double>,xt::xarray<double>> getGradientAndHessian(double dual_var, const xt::xarray<double>& F1_dp, const xt::xarray<double>& F2_dp,
+std::tuple<xt::xarray<double>,xt::xarray<double>> getGradientAndHessianGeneral(double dual_var, const xt::xarray<double>& F1_dp, const xt::xarray<double>& F2_dp,
     const xt::xarray<double>& F1_dx, const xt::xarray<double>& F2_dx,
     const xt::xarray<double>& F1_dpdp, const xt::xarray<double>& F2_dpdp,
     const xt::xarray<double>& F1_dpdx, const xt::xarray<double>& F2_dpdx,

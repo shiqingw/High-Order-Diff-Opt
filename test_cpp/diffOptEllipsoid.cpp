@@ -26,7 +26,8 @@ PYBIND11_MODULE(diffOptEllipsoidCpp, m) {
     m.def("RDRT_dq", &RDRT_dq, "F_dpdydy based on xtensor.");
     m.def("RDRT_dqdq", &RDRT_dqdq, "F_dpdydy based on xtensor.");
     m.def("getDualVariable", &getDualVariable, "getDualVariable based on xtensor.");
-    m.def("getGradient", &getGradient, "getGradient based on xtensor.");
-    m.def("getGradientAndHessian", &getGradientAndHessian, "getGradientAndHessian based on xtensor.");
+    m.def("getGradientGeneral", &getGradientGeneral, "getGradientGeneral based on xtensor.");
+    m.def("getGradientAndHessianGeneral", &getGradientAndHessianGeneral, "getGradientAndHessianGeneral based on xtensor.");
+    m.def("getGradientEllipsoid", &getGradientEllipsoid, "getGradientEllipsoid based on xtensor.");
 
 }

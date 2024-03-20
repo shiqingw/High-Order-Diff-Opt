@@ -12,7 +12,8 @@ double getDualVariable(const xt::xarray<double>& F1_dp, const xt::xarray<double>
     return F1_dp_norm/F2_dp_norm;
 }
 
-xt::xarray<double> getGradient(double dual_var, const xt::xarray<double>& F1_dp, const xt::xarray<double>& F2_dp,
+xt::xarray<double> getGradientGeneral(double dual_var,
+    const xt::xarray<double>& F1_dp,const xt::xarray<double>& F2_dp,
     const xt::xarray<double>& F1_dx, const xt::xarray<double>& F2_dx,
     const xt::xarray<double>& F1_dpdp, const xt::xarray<double>& F2_dpdp,
     const xt::xarray<double>& F1_dpdx, const xt::xarray<double>& F2_dpdx){
@@ -35,7 +36,8 @@ xt::xarray<double> getGradient(double dual_var, const xt::xarray<double>& F1_dp,
     return alpha_dx;
 }
 
-std::tuple<xt::xarray<double>,xt::xarray<double>> getGradientAndHessian(double dual_var, const xt::xarray<double>& F1_dp, const xt::xarray<double>& F2_dp,
+std::tuple<xt::xarray<double>,xt::xarray<double>> getGradientAndHessianGeneral(double dual_var,
+    const xt::xarray<double>& F1_dp, const xt::xarray<double>& F2_dp,
     const xt::xarray<double>& F1_dx, const xt::xarray<double>& F2_dx,
     const xt::xarray<double>& F1_dpdp, const xt::xarray<double>& F2_dpdp,
     const xt::xarray<double>& F1_dpdx, const xt::xarray<double>& F2_dpdx,
