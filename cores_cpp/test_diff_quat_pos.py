@@ -51,7 +51,7 @@ D_torch = D_torch.repeat(N,1,1)
 # Compute the gradient
 # print("==> Compute the gradient")
 
-number = 10000
+number = 100
 # print("Avg time to compute the gradient pytorch: ",
 #       timeit.timeit('DO.get_gradient(a_torch, quat_torch, D_torch, R_torch, B_torch, b_torch)', globals=globals(), number=number)/number)
 
@@ -89,7 +89,7 @@ number = 10000
 # print("Avg time to compute the gradient using trace: ",
 #       timeit.timeit('traced_get_gradient_and_hessian(a_torch, quat_torch, D_torch, R_torch, B_torch, b_torch)', globals=globals(), number=number)/number)
 
-print("Avg time to compute the gradient and hessian C++s: ",
+print("Avg time to compute the gradient and hessian C++: ",
         timeit.timeit('DOE.getGradientAndHessianEllipsoid(a, quat, D, R, B, b)', globals=globals(), number=number)/number)
 
 
@@ -99,10 +99,10 @@ print("p: ", p_rimon)
 print("alpha_dx: ", alpha_dx)
 print("alpha_dxdx: ", alpha_dxdx)
 
-p_rimon_torch, alpha_dx_torch, alpha_dxdx_torch = DO.get_gradient_and_hessian(a_torch, quat_torch, D_torch, R_torch, B_torch, b_torch)
-print("p_rimon_torch: ", p_rimon_torch)
-print("alpha_dx_torch: ", alpha_dx_torch)
-print("alpha_dxdx_torch: ", alpha_dxdx_torch)
+# p_rimon_torch, alpha_dx_torch, alpha_dxdx_torch = DO.get_gradient_and_hessian(a_torch, quat_torch, D_torch, R_torch, B_torch, b_torch)
+# print("p_rimon_torch: ", p_rimon_torch)
+# print("alpha_dx_torch: ", alpha_dx_torch)
+# print("alpha_dxdx_torch: ", alpha_dxdx_torch)
 
 
 # # euler = [0.01,0.01,0.01]

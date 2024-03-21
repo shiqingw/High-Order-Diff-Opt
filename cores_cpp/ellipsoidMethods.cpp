@@ -415,7 +415,14 @@ xt::xarray<double> RDRT_dqdq(const xt::xarray<double>& q, const xt::xarray<doubl
 std::tuple<double, xt::xarray<double>, xt::xarray<double>> getGradientEllipsoid(const xt::xarray<double>& a,
     const xt::xarray<double>& q, const xt::xarray<double>& D, const xt::xarray<double>& R,
     const xt::xarray<double>& B, const xt::xarray<double>& b){
-    
+    // calculate the gradient of the ellipsoid function at p_riomon wrt x = [qx, qy, qz, qw, a1, a2, a3]
+    // a: center of the ellipsoid, dimension 3
+    // q: input vector of dimension 4
+    // D: diagonal matrix of dimension 3 x 3
+    // R: rotation matrix of dimension 3 x 3
+    // B: real symmetric quadratic coefficient matrix, dimension 3 x 3
+    // b: input vector of dimension 3
+
     int dim_p = 3, dim_y = 9, dim_x = 7, dim_A_flat = 6, dim_q = 4;
     xt::xarray<double> A = xt::linalg::dot(R, xt::linalg::dot(D, xt::transpose(R))); // shape dim_p x dim_p
     xt::xarray<double> p = rimonMethodXtensor(A, a, B, b); // shape dim_p
@@ -446,6 +453,13 @@ std::tuple<double, xt::xarray<double>, xt::xarray<double>> getGradientEllipsoid(
 std::tuple<double, xt::xarray<double>, xt::xarray<double>, xt::xarray<double>> getGradientAndHessianEllipsoid(
     const xt::xarray<double>& a, const xt::xarray<double>& q, const xt::xarray<double>& D,
     const xt::xarray<double>& R, const xt::xarray<double>& B, const xt::xarray<double>& b){
+    // calculate the gradient and hessian of the ellipsoid function at p_riomon wrt x = [qx, qy, qz, qw, a1, a2, a3]
+    // a: center of the ellipsoid, dimension 3
+    // q: input vector of dimension 4
+    // D: diagonal matrix of dimension 3 x 3
+    // R: rotation matrix of dimension 3 x 3
+    // B: real symmetric quadratic coefficient matrix, dimension 3 x 3
+    // b: input vector of dimension 3
 
     int dim_p = 3, dim_y = 9, dim_x = 7, dim_A_flat = 6, dim_q = 4;
     xt::xarray<double> A = xt::linalg::dot(R, xt::linalg::dot(D, xt::transpose(R))); // shape dim_p x dim_p
