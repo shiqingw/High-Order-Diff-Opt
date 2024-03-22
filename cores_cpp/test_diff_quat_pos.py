@@ -2,7 +2,7 @@ import sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 import numpy as np
-import diffOptEllipsoidCpp as DOE
+import diffOptCpp as DOE
 import torch
 import timeit
 import time
@@ -52,7 +52,7 @@ D_torch = D_torch.repeat(N,1,1)
 # Compute the gradient
 # print("==> Compute the gradient")
 
-number = 100
+number = 1000
 # print("Avg time to compute the gradient pytorch: ",
 #       timeit.timeit('DO.get_gradient(a_torch, quat_torch, D_torch, R_torch, B_torch, b_torch)', globals=globals(), number=number)/number)
 

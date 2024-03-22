@@ -5,10 +5,11 @@ setup(
     name='example',
     ext_modules=[
         Extension(
-            'diffOptEllipsoidCpp',
-            ['diffOptEllipsoid.cpp',
+            'diffOptCpp',
+            ['diffOptPybind.cpp',
+             'diffOptHelper.cpp',
              'ellipsoidMethods.cpp',
-             'diffOptHelper.cpp'],
+             'logSumExpMethods.cpp'],
             include_dirs=[pybind11.get_include(),
                           "/opt/homebrew/opt/lapack/include",
                           "/Users/shiqing/anaconda3/envs/py311/include/eigen3",

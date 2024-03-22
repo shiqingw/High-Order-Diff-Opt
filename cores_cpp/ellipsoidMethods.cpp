@@ -65,8 +65,6 @@ xt::xarray<double> rimonMethodXtensor(const xt::xarray<double>& A, const xt::xar
     xt::xarray<double> A_sqrt_inv = xt::linalg::inv(A_sqrt);
     
     // Eigen::MatrixXd C = A_sqrt_inv * B * A_sqrt_inv.transpose();
-    // xt::xarray<double> C = xt::linalg::solve_triangular(A_sqrt, B);
-    // C = xt::linalg::solve_triangular(A_sqrt, xt::transpose(C));
     xt::xarray<double> C = xt::linalg::dot(xt::linalg::dot(A_sqrt_inv, B), xt::transpose(A_sqrt_inv));
 
     // Eigen::VectorXd c = A_sqrt.transpose() * (b - a);
@@ -92,23 +90,16 @@ xt::xarray<double> rimonMethodXtensor(const xt::xarray<double>& A, const xt::xar
     xt::view(M, xt::range(nv, 2*nv), xt::range(0, nv)) = xt::linalg::outer(-c_tilde, xt::transpose(c_tilde));
 
     // Compute the smallest eigenvalue of M
-    xt::xarray<double> eigenval_real = xt::real(xt::linalg::eigvals(M));
-    double lambda_min = std::numeric_limits<double>::max();
-    for (double& val : eigenval_real) {
-        if (val < lambda_min) {
-            lambda_min = val;
-        }
-    }
+    double lambda_min = xt::amin(xt::real(xt::linalg::eigvals(M)))();
 
     // Solve for x_rimon
-    // xt::xarray<double> L = -xt::linalg::cholesky(-lambda_min * C + xt::eye(nv));
     xt::xarray<double> x_rimon = xt::linalg::solve(lambda_min * C - xt::eye(nv), xt::linalg::dot(C, c)); 
     x_rimon = a + lambda_min * xt::linalg::solve(xt::transpose(A_sqrt), x_rimon);
     
     return x_rimon;
 }
 
-double F(const xt::xarray<double>& p, const xt::xarray<double>& a, const xt::xarray<double>& A) {
+double ellipsoid_F(const xt::xarray<double>& p, const xt::xarray<double>& a, const xt::xarray<double>& A) {
     // Compute F(p)
     // p: input vector of dimension 3
     // a: center of the ellipsoid, dimension 3
@@ -117,7 +108,7 @@ double F(const xt::xarray<double>& p, const xt::xarray<double>& a, const xt::xar
     return xt::linalg::dot(p - a, xt::linalg::dot(A, p - a))(0);
 }
 
-xt::xarray<double> F_dp(const xt::xarray<double>& p, const xt::xarray<double>& a, const xt::xarray<double>& A) {
+xt::xarray<double> ellipsoid_dp(const xt::xarray<double>& p, const xt::xarray<double>& a, const xt::xarray<double>& A) {
     // Compute dF/dp
     // p: input vector of dimension 3
     // a: center of the ellipsoid, dimension 3
@@ -126,20 +117,20 @@ xt::xarray<double> F_dp(const xt::xarray<double>& p, const xt::xarray<double>& a
     return 2 * xt::linalg::dot(A, p - a); // Since A is symmetric, A.transpose() is the same as A
 }
 
-xt::xarray<double> F_dpdp(const xt::xarray<double>& A) {
+xt::xarray<double> ellipsoid_dpdp(const xt::xarray<double>& A) {
     // Compute d^2F/dpdp
     // A: real symmetric quadratic coefficient matrix, dimension 3 x 3
 
     return 2 * A; // Since A is symmetric, A.transpose() is the same as A
 }
 
-xt::xarray<double> F_dpdpdp() {
+xt::xarray<double> ellipsoid_dpdpdp() {
     // Compute d^3F/dpdpdp
 
     return xt::zeros<double>({3, 3, 3});;
 }
 
-xt::xarray<double> F_dy(const xt::xarray<double>& p, const xt::xarray<double>& a, const xt::xarray<double>& A) {
+xt::xarray<double> ellipsoid_dy(const xt::xarray<double>& p, const xt::xarray<double>& a, const xt::xarray<double>& A) {
     // Compute dF/dy, where y = [A11, A12, A13, A22, A23, A33, a1, a2, a3]
     // p: input vector of dimension 3
     // a: center of the ellipsoid, dimension 3
@@ -159,7 +150,7 @@ xt::xarray<double> F_dy(const xt::xarray<double>& p, const xt::xarray<double>& a
     return F_dy;
 }
 
-xt::xarray<double> F_dpdy(const xt::xarray<double>& p, const xt::xarray<double>& a, const xt::xarray<double>& A) {
+xt::xarray<double> ellipsoid_dpdy(const xt::xarray<double>& p, const xt::xarray<double>& a, const xt::xarray<double>& A) {
     // Compute d^2F/dpdy, where y = [A11, A12, A13, A22, A23, A33, a1, a2, a3]
     // p: input vector of dimension 3
     // a: center of the ellipsoid, dimension 3
@@ -182,7 +173,7 @@ xt::xarray<double> F_dpdy(const xt::xarray<double>& p, const xt::xarray<double>&
     return F_dpdy;
 }
 
-xt::xarray<double> F_dydy(const xt::xarray<double>& p, const xt::xarray<double>& a, const xt::xarray<double>& A) {
+xt::xarray<double> ellipsoid_dydy(const xt::xarray<double>& p, const xt::xarray<double>& a, const xt::xarray<double>& A) {
     // Compute d^2F/dydy, where y = [A11, A12, A13, A22, A23, A33, a1, a2, a3]
     // p: input vector of dimension 3
     // a: center of the ellipsoid, dimension 3
@@ -207,7 +198,7 @@ xt::xarray<double> F_dydy(const xt::xarray<double>& p, const xt::xarray<double>&
     return F_dydy;
 }
 
-xt::xarray<double> F_dpdpdy(const xt::xarray<double>& A) {
+xt::xarray<double> ellipsoid_dpdpdy(const xt::xarray<double>& A) {
     // Compute d^3F/dpdpdy, where y = [A11, A12, A13, A22, A23, A33, a1, a2, a3]
     // p: input vector of dimension 3
     // a: center of the ellipsoid, dimension 3
@@ -222,23 +213,23 @@ xt::xarray<double> F_dpdpdy(const xt::xarray<double>& A) {
     return F_dpdpdy;
 }
 
-xt::xarray<double> F_dpdydy(const xt::xarray<double>& A) {
+xt::xarray<double> ellipsoid_dpdydy(const xt::xarray<double>& A) {
     // Compute d^3F/dpdpdy, where y = [A11, A12, A13, A22, A23, A33, a1, a2, a3]
     // p: input vector of dimension 3
     // a: center of the ellipsoid, dimension 3
     // A: real symmetric quadratic coefficient matrix, dimension 3 x 3
     int dim_p = 3, dim_y = 9, dim_A_flat = 6;
-    xt::xarray<double> F_dpdpdy = xt::zeros<double>({dim_p, dim_y, dim_y});
+    xt::xarray<double> F_dpdydy = xt::zeros<double>({dim_p, dim_y, dim_y});
     xt::xarray<double> tmp = xt::zeros<double>({dim_p, dim_p, dim_A_flat});
     for (int i = 0; i < dim_A_flat; ++i){
         tmp(i/dim_p,i%dim_p,i) = -2;
         tmp(i%dim_p,i/dim_p,i) = -2;
     }
 
-    xt::view(F_dpdpdy, xt::all(), xt::range(dim_A_flat, dim_y), xt::range(0, dim_A_flat)) = tmp;
-    xt::view(F_dpdpdy, xt::all(), xt::range(0, dim_A_flat), xt::range(dim_A_flat, dim_y)) = xt::transpose(tmp, {0,2,1});
+    xt::view(F_dpdydy, xt::all(), xt::range(dim_A_flat, dim_y), xt::range(0, dim_A_flat)) = tmp;
+    xt::view(F_dpdydy, xt::all(), xt::range(0, dim_A_flat), xt::range(dim_A_flat, dim_y)) = xt::transpose(tmp, {0,2,1});
 
-    return F_dpdpdy;
+    return F_dpdydy;
 }
 
 xt::xarray<double> RDRT_dq(const xt::xarray<double>& q, const xt::xarray<double>& D, const xt::xarray<double>& R){
@@ -426,14 +417,14 @@ std::tuple<double, xt::xarray<double>, xt::xarray<double>> getGradientEllipsoid(
     int dim_p = 3, dim_y = 9, dim_x = 7, dim_A_flat = 6, dim_q = 4;
     xt::xarray<double> A = xt::linalg::dot(R, xt::linalg::dot(D, xt::transpose(R))); // shape dim_p x dim_p
     xt::xarray<double> p = rimonMethodXtensor(A, a, B, b); // shape dim_p
-    double F1 = F(p, a, A); // scalar
-    xt::xarray<double> F1_dp = F_dp(p, a, A); // shape dim_p
-    xt::xarray<double> F2_dp = F_dp(p, b, B); // shape dim_p
-    xt::xarray<double> F1_dy = F_dy(p, a, A); // shape dim_y
+    double F1 = ellipsoid_F(p, a, A); // scalar
+    xt::xarray<double> F1_dp = ellipsoid_dp(p, a, A); // shape dim_p
+    xt::xarray<double> F2_dp = ellipsoid_dp(p, b, B); // shape dim_p
+    xt::xarray<double> F1_dy = ellipsoid_dy(p, a, A); // shape dim_y
     xt::xarray<double> F2_dy = xt::zeros<double>({dim_y});
-    xt::xarray<double> F1_dpdp = F_dpdp(A); // shape dim_p x dim_p
-    xt::xarray<double> F2_dpdp = F_dpdp(B); // shape dim_p x dim_p
-    xt::xarray<double> F1_dpdy = F_dpdy(p, a, A); // shape dim_p x dim_y
+    xt::xarray<double> F1_dpdp = ellipsoid_dpdp(A); // shape dim_p x dim_p
+    xt::xarray<double> F2_dpdp = ellipsoid_dpdp(B); // shape dim_p x dim_p
+    xt::xarray<double> F1_dpdy = ellipsoid_dpdy(p, a, A); // shape dim_p x dim_y
     xt::xarray<double> F2_dpdy = xt::zeros<double>({dim_p, dim_y});
     double dual_var = getDualVariable(F1_dp, F2_dp);
     xt::xarray<double> alpha_dy = getGradientGeneral(dual_var, F1_dp, F2_dp, F1_dy, F2_dy, F1_dpdp, F2_dpdp, F1_dpdy, F2_dpdy);
@@ -464,22 +455,22 @@ std::tuple<double, xt::xarray<double>, xt::xarray<double>, xt::xarray<double>> g
     int dim_p = 3, dim_y = 9, dim_x = 7, dim_A_flat = 6, dim_q = 4;
     xt::xarray<double> A = xt::linalg::dot(R, xt::linalg::dot(D, xt::transpose(R))); // shape dim_p x dim_p
     xt::xarray<double> p = rimonMethodXtensor(A, a, B, b); // shape dim_p
-    double F1 = F(p, a, A); // scalar
-    xt::xarray<double> F1_dp = F_dp(p, a, A); // shape dim_p
-    xt::xarray<double> F2_dp = F_dp(p, b, B); // shape dim_p
-    xt::xarray<double> F1_dy = F_dy(p, a, A); // shape dim_y
+    double F1 = ellipsoid_F(p, a, A); // scalar
+    xt::xarray<double> F1_dp = ellipsoid_dp(p, a, A); // shape dim_p
+    xt::xarray<double> F2_dp = ellipsoid_dp(p, b, B); // shape dim_p
+    xt::xarray<double> F1_dy = ellipsoid_dy(p, a, A); // shape dim_y
     xt::xarray<double> F2_dy = xt::zeros<double>({dim_y});
-    xt::xarray<double> F1_dpdp = F_dpdp(A); // shape dim_p x dim_p
-    xt::xarray<double> F2_dpdp = F_dpdp(B); // shape dim_p x dim_p
-    xt::xarray<double> F1_dpdy = F_dpdy(p, a, A); // shape dim_p x dim_y
+    xt::xarray<double> F1_dpdp = ellipsoid_dpdp(A); // shape dim_p x dim_p
+    xt::xarray<double> F2_dpdp = ellipsoid_dpdp(B); // shape dim_p x dim_p
+    xt::xarray<double> F1_dpdy = ellipsoid_dpdy(p, a, A); // shape dim_p x dim_y
     xt::xarray<double> F2_dpdy = xt::zeros<double>({dim_p, dim_y});
-    xt::xarray<double> F1_dydy = F_dydy(p, a, A); // shape dim_x x dim_x
+    xt::xarray<double> F1_dydy = ellipsoid_dydy(p, a, A); // shape dim_x x dim_x
     xt::xarray<double> F2_dydy = xt::zeros<double>({dim_y, dim_y});
-    xt::xarray<double> F1_dpdpdp = F_dpdpdp(); // shape dim_p x dim_p x dim_p
-    xt::xarray<double> F2_dpdpdp = F_dpdpdp(); // shape dim_p x dim_p x dim_p
-    xt::xarray<double> F1_dpdpdy = F_dpdpdy(A); // shape dim_p x dim_p x dim_y
+    xt::xarray<double> F1_dpdpdp = ellipsoid_dpdpdp(); // shape dim_p x dim_p x dim_p
+    xt::xarray<double> F2_dpdpdp = ellipsoid_dpdpdp(); // shape dim_p x dim_p x dim_p
+    xt::xarray<double> F1_dpdpdy = ellipsoid_dpdpdy(A); // shape dim_p x dim_p x dim_y
     xt::xarray<double> F2_dpdpdy = xt::zeros<double>({dim_p, dim_p, dim_y});
-    xt::xarray<double> F1_dpdydy = F_dpdydy(A); // shape dim_p x dim_y x dim_y
+    xt::xarray<double> F1_dpdydy = ellipsoid_dpdydy(A); // shape dim_p x dim_y x dim_y
     xt::xarray<double> F2_dpdydy = xt::zeros<double>({dim_p, dim_y, dim_y});
 
     double dual_var = getDualVariable(F1_dp, F2_dp);
