@@ -5,6 +5,7 @@ import numpy as np
 import diffOptEllipsoidCpp as DOE
 import torch
 import timeit
+import time
 from cores.differentiable_optimization.quat_diff_utils import Quaternion_RDRT
 from cores.differentiable_optimization.ellipsoid_quat_pos import Ellipsoid_Quat_Pos
 from cores.utils.rotation_utils import get_rot_matrix_from_quat, get_quat_from_rot_matrix, get_rot_matrix_from_euler_zyx
@@ -92,8 +93,10 @@ number = 100
 print("Avg time to compute the gradient and hessian C++: ",
         timeit.timeit('DOE.getGradientAndHessianEllipsoid(a, quat, D, R, B, b)', globals=globals(), number=number)/number)
 
-
+start = time.time()
 F, p_rimon, alpha_dx, alpha_dxdx = DOE.getGradientAndHessianEllipsoid(a, quat, D, R, B, b)
+end = time.time()
+print(end-start)
 print("F: ", F)
 print("p: ", p_rimon)
 print("alpha_dx: ", alpha_dx)
