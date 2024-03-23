@@ -52,6 +52,7 @@
         "atomic": "cpp",
         "exception": "cpp",
         "system_error": "cpp",
-        "thread": "cpp"
+        "thread": "cpp",
+        "optional": "cpp"
     }
 }

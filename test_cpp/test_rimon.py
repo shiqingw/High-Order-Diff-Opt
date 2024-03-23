@@ -1,4 +1,7 @@
-import diffOptEllipsoidCpp
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).parent.parent))
+from cores_cpp import diffOptCpp as DOC
 import numpy as np
 import scipy as sp
 import timeit
@@ -22,13 +25,13 @@ B = np.array([[1, 0.1, 0.1],
 # print(sp.linalg.eigvals(B))
 
 number = 1000
-print("C++ Eigen time:", timeit.timeit(lambda: diffOptEllipsoidCpp.rimonMethod(A, a, B, b), number=number)/1000)
-x_rimon = diffOptEllipsoidCpp.rimonMethod(A, a, B, b)
+print("C++ Eigen time:", timeit.timeit(lambda: DOC.rimonMethod(A, a, B, b), number=number)/1000)
+x_rimon = DOC.rimonMethod(A, a, B, b)
 print(x_rimon)
 
 print()
-print("C++ xtensor time:", timeit.timeit(lambda: diffOptEllipsoidCpp.rimonMethodXtensor(A, a, B, b), number=number)/1000)
-x_rimon = diffOptEllipsoidCpp.rimonMethodXtensor(A, a, B, b)
+print("C++ xtensor time:", timeit.timeit(lambda: DOC.rimonMethodXtensor(A, a, B, b), number=number)/1000)
+x_rimon = DOC.rimonMethodXtensor(A, a, B, b)
 print(x_rimon)
 
 print()

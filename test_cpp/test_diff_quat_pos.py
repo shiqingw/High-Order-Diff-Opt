@@ -2,7 +2,7 @@ import sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 import numpy as np
-import diffOptCpp as DOE
+from cores_cpp import diffOptCpp as DOC
 import torch
 import timeit
 import time
@@ -93,10 +93,8 @@ number = 1000
 print("Avg time to compute the gradient and hessian C++: ",
         timeit.timeit('DOE.getGradientAndHessianEllipsoid(a, quat, D, R, B, b)', globals=globals(), number=number)/number)
 
-start = time.time()
-F, p_rimon, alpha_dx, alpha_dxdx = DOE.getGradientAndHessianEllipsoid(a, quat, D, R, B, b)
-end = time.time()
-print(end-start)
+F, p_rimon, alpha_dx, alpha_dxdx = DOC.getGradientAndHessianEllipsoid(a, quat, D, R, B, b)
+
 print("F: ", F)
 print("p: ", p_rimon)
 print("alpha_dx: ", alpha_dx)

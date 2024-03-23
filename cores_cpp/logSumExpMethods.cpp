@@ -7,6 +7,9 @@
 #include <xtensor-blas/xlinalg.hpp>
 #include <xtensor/xadapt.hpp>
 
+#include "diffOptHelper.h"
+#include "ellipsoidMethods.h"
+
 
 std::tuple<double, xt::xarray<double>, xt::xarray<double>, xt::xarray<double>>
 getLogSumExpDerivaties(const xt::xarray<double>& p, const xt::xarray<double>& A,
@@ -62,8 +65,61 @@ const xt::xarray<double>& b, const double kappa) {
     return std::make_tuple(F, F_dp, F_dpdp, F_dpdpdp);
 }
 
-std::tuple<double, xt::xarray<double>, xt::xarray<double>, xt::xarray<double>> getGradientAndHessianEllipsoidAndLogSumExp(
-    const xt::xarray<double>& a, const xt::xarray<double>& q, const xt::xarray<double>& D,
-    const xt::xarray<double>& R, const xt::xarray<double>& B, const xt::xarray<double>& b){
-        
-    }
+std::tuple<double, xt::xarray<double>, xt::xarray<double>> getGradientAndHessianEllipsoidAndLogSumExp(
+    const xt::xarray<double>& p, const xt::xarray<double>& a, const xt::xarray<double>& q, const xt::xarray<double>& D,
+    const xt::xarray<double>& R, const xt::xarray<double>& B, const xt::xarray<double>& b, const double kappa){
+    // calculate the gradient and hessian of the ellipsoid function at p wrt x = [qx, qy, qz, qw, a1, a2, a3]
+    // a: center of the ellipsoid, dimension 3
+    // q: input vector of dimension 4
+    // D: diagonal matrix of dimension 3 x 3
+    // R: rotation matrix of dimension 3 x 3
+    // B: coefficient matrix of logSumExp function of dimension N x 3
+    // b: coefficient matrix of logSumExp function of dimension N
+    // kappa: scalar
+
+    int dim_p = 3, dim_y = 9, dim_x = 7, dim_A_flat = 6, dim_q = 4;
+    xt::xarray<double> A = xt::linalg::dot(R, xt::linalg::dot(D, xt::transpose(R))); // shape dim_p x dim_p
+    double F1 = ellipsoid_F(p, a, A); // scalar
+    xt::xarray<double> F1_dp = ellipsoid_dp(p, a, A); // shape dim_p
+    xt::xarray<double> F1_dy = ellipsoid_dy(p, a, A); // shape dim_y
+    xt::xarray<double> F2_dy = xt::zeros<double>({dim_y});
+    xt::xarray<double> F1_dpdp = ellipsoid_dpdp(A); // shape dim_p x dim_p
+    xt::xarray<double> F1_dpdy = ellipsoid_dpdy(p, a, A); // shape dim_p x dim_y
+    xt::xarray<double> F2_dpdy = xt::zeros<double>({dim_p, dim_y});
+    xt::xarray<double> F1_dydy = ellipsoid_dydy(p, a, A); // shape dim_x x dim_x
+    xt::xarray<double> F2_dydy = xt::zeros<double>({dim_y, dim_y});
+    xt::xarray<double> F1_dpdpdp = ellipsoid_dpdpdp(); // shape dim_p x dim_p x dim_p
+    xt::xarray<double> F1_dpdpdy = ellipsoid_dpdpdy(A); // shape dim_p x dim_p x dim_y
+    xt::xarray<double> F2_dpdpdy = xt::zeros<double>({dim_p, dim_p, dim_y});
+    xt::xarray<double> F1_dpdydy = ellipsoid_dpdydy(A); // shape dim_p x dim_y x dim_y
+    xt::xarray<double> F2_dpdydy = xt::zeros<double>({dim_p, dim_y, dim_y});
+
+    double F2;
+    xt::xarray<double> F2_dp, F2_dpdp, F2_dpdpdp;
+    std::tie(F2, F2_dp, F2_dpdp, F2_dpdpdp) = getLogSumExpDerivaties(p, B, b, kappa);
+
+    double dual_var = getDualVariable(F1_dp, F2_dp);
+    xt::xarray<double> alpha_dy, alpha_dydy;
+    std::tie(alpha_dy, alpha_dydy) = getGradientAndHessianGeneral(dual_var, 
+            F1_dp, F2_dp, F1_dy, F2_dy, F1_dpdp, F2_dpdp, F1_dpdy, F2_dpdy, F1_dydy, F2_dydy,
+            F1_dpdpdp, F2_dpdpdp, F1_dpdpdy, F2_dpdpdy, F1_dpdydy, F2_dpdydy);
+
+    xt::xarray<double> M_dq = RDRT_dq(q, D, R); // shape dim_A_flat x dim_q
+    xt::xarray<double> M_dqdq = RDRT_dqdq(q, D); // shape dim_A_flat x dim_q x dim_q
+
+    xt::xarray<double> y_dx = xt::zeros<double>({dim_y, dim_x}); // shape dim_y x dim_x
+    xt::view(y_dx, xt::range(0, dim_A_flat), xt::range(0, dim_q)) = M_dq;
+    y_dx(6,4) = 1;
+    y_dx(7,5) = 1;
+    y_dx(8,6) = 1;
+
+    xt::xarray<double> alpha_dx = xt::linalg::dot(alpha_dy, y_dx); // shape dim_x
+
+    xt::xarray<double> y_dxdx = xt::zeros<double>({dim_y, dim_x, dim_x}); // shape dim_y x dim_x x dim_x
+    xt::view(y_dxdx, xt::range(0, dim_A_flat), xt::range(0, dim_q), xt::range(0, dim_q)) = M_dqdq;
+
+    xt::xarray<double> alpha_dxdx = xt::linalg::dot(xt::transpose(y_dx), xt::linalg::dot(alpha_dydy, y_dx));
+    alpha_dxdx += xt::linalg::tensordot(alpha_dy, y_dxdx, {0}, {0});
+
+    return std::make_tuple(F1, alpha_dx, alpha_dxdx);
+}

@@ -3,7 +3,7 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 import numpy as np
 import torch
-import diffOptEllipsoidCpp as DOE
+from cores_cpp import diffOptCpp as DOC
 from cores.differentiable_optimization.diff_opt_helper import get_dual_variable_pytorch, get_gradient_pytorch, get_gradient_and_hessian_pytorch
 from cores.configuration.configuration import Configuration
 config = Configuration()
@@ -49,8 +49,8 @@ dual_var_torch = get_dual_variable_pytorch(F1_dp_torch, F2_dp_torch)
 grad_torch = get_gradient_pytorch(dual_var_torch, F1_dp_torch, F2_dp_torch, F1_dx_torch,\
                             F2_dx_torch, F1_dpdp_torch, F2_dpdp_torch, F1_dpdx_torch, F2_dpdx_torch)
 
-dual_var = DOE.getDualVariable(F1_dp, F2_dp)
-grad = DOE.getGradient(dual_var, F1_dp, F2_dp, F1_dx, F2_dx, F1_dpdp, F2_dpdp, F1_dpdx, F2_dpdx)
+dual_var = DOC.getDualVariable(F1_dp, F2_dp)
+grad = DOC.getGradientGeneral(dual_var, F1_dp, F2_dp, F1_dx, F2_dx, F1_dpdp, F2_dpdp, F1_dpdx, F2_dpdx)
 
 # print(grad_torch.squeeze(0) - grad)
 
@@ -59,7 +59,7 @@ grad_torch, hess_torch = get_gradient_and_hessian_pytorch(dual_var_torch, F1_dp_
                                         F1_dxdx_torch, F2_dxdx_torch, F1_dpdpdp_torch, F2_dpdpdp_torch,\
                                         F1_dpdpdx_torch, F2_dpdpdx_torch, F1_dpdxdx_torch, F2_dpdxdx_torch)
 
-grad, hess = DOE.getGradientAndHessian(dual_var, F1_dp, F2_dp, F1_dx, F2_dx, F1_dpdp, F2_dpdp, F1_dpdx, F2_dpdx,\
+grad, hess = DOC.getGradientAndHessianGeneral(dual_var, F1_dp, F2_dp, F1_dx, F2_dx, F1_dpdp, F2_dpdp, F1_dpdx, F2_dpdx,\
                                 F1_dxdx, F2_dxdx, F1_dpdpdp, F2_dpdpdp, F1_dpdpdx, F2_dpdpdx, F1_dpdxdx, F2_dpdxdx)
 
 print(grad_torch.squeeze(0) - grad)

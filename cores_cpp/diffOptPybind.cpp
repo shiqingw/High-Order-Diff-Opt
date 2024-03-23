@@ -35,4 +35,5 @@ PYBIND11_MODULE(diffOptCpp, m) {
     m.def("getGradientAndHessianEllipsoid", &getGradientAndHessianEllipsoid, "getGradientAndHessianEllipsoid based on xtensor.");
 
     m.def("getLogSumExpDerivaties", &getLogSumExpDerivaties, "getLogSumExpDerivaties based on xtensor.");
+    m.def("getGradientAndHessianEllipsoidAndLogSumExp", &getGradientAndHessianEllipsoidAndLogSumExp, "getGradientAndHessianEllipsoidAndLogSumExp based on xtensor.");
 }
