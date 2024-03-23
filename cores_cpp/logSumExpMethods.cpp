@@ -44,7 +44,6 @@ const xt::xarray<double>& b, const double kappa) {
         tmp -= pow(kappa,2) * xt::sum(z_dp_i)() * AT_diag_z_A/pow(sum_z,2);
         xt::view(F_dpdpdp, xt::all(), xt::all(), i) += tmp; 
     }
-
     // part 2 of F_dpdpdp
     xt::xarray<double> big = xt::zeros<double>({dim_z, dim_z, dim_z});
     xt::xarray<double> identity = xt::eye(dim_z);
@@ -55,9 +54,8 @@ const xt::xarray<double>& b, const double kappa) {
 
     for (int i = 0; i < dim_p; ++i){
         xt::xarray<double> z_dp_i = xt::view(z_dp, xt::all(), i);
-        xt::xarray<double> tmp = xt::linalg::tensordot(xt::transpose(A), big, {1}, {0}); // shape dim_p x dim_z x dim_z
-        tmp = xt::linalg::tensordot(tmp, A, {1}, {0}); // shape dim_p x dim_p x dim_z
-        tmp = pow(kappa,2) * xt::linalg::tensordot(tmp, z_dp_i, {2}, {0}) / pow(sum_z,2); // shape dim_p x dim_p
+        xt::xarray<double> tmp = xt::linalg::tensordot(big, z_dp_i, {2}, {0}); // shape dim_z x dim_z
+        tmp = pow(kappa,2) * xt::linalg::dot(xt::transpose(A), xt::linalg::dot(tmp, A))/ pow(sum_z,2); // shape dim_p x dim_p
         tmp -= 2 * pow(kappa,2) * xt::sum(z_dp_i)() * AT_z_zT_A / pow(sum_z,3);
         xt::view(F_dpdpdp, xt::all(), xt::all(), i) -= tmp;
     }
