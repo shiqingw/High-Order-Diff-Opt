@@ -12,7 +12,7 @@
 
 
 std::tuple<double, xt::xarray<double>, xt::xarray<double>, xt::xarray<double>>
-getLogSumExpDerivaties(const xt::xarray<double>& p, const xt::xarray<double>& A,
+getLogSumExpDerivatives(const xt::xarray<double>& p, const xt::xarray<double>& A,
 const xt::xarray<double>& b, const double kappa) {
     // Compute F(p) = log[sum(exp[k(A p + b)])/len(A)] + 1
     // p: input vector of dimension 2 or 3
@@ -94,7 +94,7 @@ std::tuple<double, xt::xarray<double>, xt::xarray<double>> getGradientAndHessian
 
     double F2;
     xt::xarray<double> F2_dp, F2_dpdp, F2_dpdpdp;
-    std::tie(F2, F2_dp, F2_dpdp, F2_dpdpdp) = getLogSumExpDerivaties(p, B, b, kappa);
+    std::tie(F2, F2_dp, F2_dpdp, F2_dpdpdp) = getLogSumExpDerivatives(p, B, b, kappa);
 
     double dual_var = getDualVariable(F1_dp, F2_dp);
     xt::xarray<double> alpha_dy, alpha_dydy;

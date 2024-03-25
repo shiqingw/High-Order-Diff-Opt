@@ -69,9 +69,9 @@ number = 1000
 # print("alpha_dx_torch: ", alpha_dx_torch)
 
 # print("Avg time to compute the gradient C++: ",
-#       timeit.timeit('DOE.getGradientEllipsoid(a, quat, D, R, B, b)', globals=globals(), number=number)/number)
+#       timeit.timeit('DOE.getGradientEllipsoids(a, quat, D, R, B, b)', globals=globals(), number=number)/number)
 
-# F, p_rimon, alpha_dx = DOE.getGradientEllipsoid(a, quat, D, R, B, b)
+# F, p_rimon, alpha_dx = DOE.getGradientEllipsoids(a, quat, D, R, B, b)
 # print("F: ", F)
 # print("p: ", p_rimon)
 # print("alpha: ", alpha_dx)
@@ -91,9 +91,9 @@ number = 1000
 #       timeit.timeit('traced_get_gradient_and_hessian(a_torch, quat_torch, D_torch, R_torch, B_torch, b_torch)', globals=globals(), number=number)/number)
 
 print("Avg time to compute the gradient and hessian C++: ",
-        timeit.timeit('DOE.getGradientAndHessianEllipsoid(a, quat, D, R, B, b)', globals=globals(), number=number)/number)
+        timeit.timeit('DOC.getGradientAndHessianEllipsoids(a, quat, D, R, B, b)', globals=globals(), number=number)/number)
 
-F, p_rimon, alpha_dx, alpha_dxdx = DOC.getGradientAndHessianEllipsoid(a, quat, D, R, B, b)
+F, p_rimon, alpha_dx, alpha_dxdx = DOC.getGradientAndHessianEllipsoids(a, quat, D, R, B, b)
 
 print("F: ", F)
 print("p: ", p_rimon)

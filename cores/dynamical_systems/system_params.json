@@ -1,0 +1,18 @@
+{
+    "Quadrotor":{
+        "type":"Quadrotor2D",
+        "properties": {
+            "n_states": 6,
+            "n_controls": 2,
+            "u1_constraint": [-10,10],
+            "u2_constraint": [-10,10]
+        },
+        "params":{
+            "mass": 0.6,
+            "inertia": 0.15,
+            "length": 0.25,
+            "gravity": 9.81, 
+            "delta_t": 0.01
+        }
+    }
+}
