@@ -4,7 +4,6 @@ from cores.differentiable_optimization.diff_opt_helper import get_dual_variable_
 from cores.differentiable_optimization.quat_diff_utils import Quaternion_RDRT_Symmetric
 from cores.rimon_method_python.rimon_method import rimon_method_pytorch
 import torch
-import time
 
 
 class Ellipsoid_Quat_Pos():
