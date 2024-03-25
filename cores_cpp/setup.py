@@ -9,6 +9,7 @@ setup(
             ['diffOptPybind.cpp',
              'diffOptHelper.cpp',
              'ellipsoidMethods.cpp',
+             'ellipseMethods.cpp',
              'logSumExpMethods.cpp'],
             include_dirs=[pybind11.get_include(),
                           "/opt/homebrew/opt/lapack/include",

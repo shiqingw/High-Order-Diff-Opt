@@ -340,11 +340,16 @@ class Ellipsoid_Symmetric():
         batch_size = A.shape[0]
         dim_p = A.shape[-1]
         dim_x = (dim_p+1)*dim_p//2 + dim_p
-        dim_A_flat = (dim_p+1)*dim_p//2
         total = torch.zeros((batch_size, dim_p, dim_p, dim_x), dtype=A.dtype, device=A.device)
-        for i in range(dim_A_flat):
-            total[:,i//dim_p,i%dim_p,i] = 2.0
-            total[:,i%dim_p,i//dim_p,i] = 2.0 # put 2 (not 4) when i%dim_p == i//dim_p
+        total[:,0,0,0] = 2
+        total[:,0,1,1] = 2
+        total[:,1,0,1] = 2
+        total[:,0,2,2] = 2
+        total[:,2,0,2] = 2
+        total[:,1,1,3] = 2
+        total[:,1,2,4] = 2
+        total[:,2,1,4] = 2
+        total[:,2,2,5] = 2
 
         return total
     
@@ -366,9 +371,15 @@ class Ellipsoid_Symmetric():
         total = torch.zeros((batch_size, dim_p, dim_x, dim_x), dtype=A.dtype, device=A.device)
 
         tmp = torch.zeros((batch_size, dim_p, dim_p, dim_A_flat), dtype=A.dtype, device=A.device)
-        for i in range(dim_A_flat):
-            tmp[:,i//dim_p,i%dim_p,i] = -2.0
-            tmp[:,i%dim_p,i//dim_p,i] = -2.0 # put -2 (not -4) when i%dim_p == i//dim_p
+        tmp[:,0,0,0] = -2
+        tmp[:,0,1,1] = -2
+        tmp[:,1,0,1] = -2
+        tmp[:,0,2,2] = -2
+        tmp[:,2,0,2] = -2
+        tmp[:,1,1,3] = -2
+        tmp[:,1,2,4] = -2
+        tmp[:,2,1,4] = -2
+        tmp[:,2,2,5] = -2
         
         total[:,:,dim_A_flat:dim_x,0:dim_A_flat] = tmp
         total[:,:,0:dim_A_flat,dim_A_flat:dim_x] = tmp.transpose(-1,-2)

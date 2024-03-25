@@ -64,3 +64,13 @@ def sp_get_rot_matrix_from_quat(quat):
                             [2*(qx*qy+qw*qz), 2*(qw**2+qy**2)-1, 2*(qy*qz-qw*qx)],
                             [2*(qx*qz-qw*qy), 2*(qy*qz+qw*qx), 2*(qw**2+qz**2)-1]])
     return rot_matrix
+
+def np_get_rot_matrix_from_quat(quat):
+    """
+    The quaternion value is in scalar-first (x, y, z, w) format
+    """
+    qx, qy, qz, qw = quat
+    rot_matrix = np.array([[2*(qw**2+qx**2)-1, 2*(qx*qy-qw*qz), 2*(qx*qz+qw*qy)],
+                            [2*(qx*qy+qw*qz), 2*(qw**2+qy**2)-1, 2*(qy*qz-qw*qx)],
+                            [2*(qx*qz-qw*qy), 2*(qy*qz+qw*qx), 2*(qw**2+qz**2)-1]])
+    return rot_matrix

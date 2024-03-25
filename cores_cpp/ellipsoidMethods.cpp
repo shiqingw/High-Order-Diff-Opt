@@ -205,10 +205,15 @@ xt::xarray<double> ellipsoid_dpdpdy(const xt::xarray<double>& A) {
     // A: real symmetric quadratic coefficient matrix, dimension 3 x 3
     int dim_p = 3, dim_y = 9, dim_A_flat = 6;
     xt::xarray<double> F_dpdpdy = xt::zeros<double>({dim_p, dim_p, dim_y});
-    for (int i = 0; i < dim_A_flat; ++i){
-        F_dpdpdy(i/dim_p,i%dim_p,i) = 2;
-        F_dpdpdy(i%dim_p,i/dim_p,i) = 2;
-    }
+    F_dpdpdy(0,0,0) = 2;
+    F_dpdpdy(0,1,1) = 2;
+    F_dpdpdy(1,0,1) = 2;
+    F_dpdpdy(0,2,2) = 2;
+    F_dpdpdy(2,0,2) = 2;
+    F_dpdpdy(1,1,3) = 2;
+    F_dpdpdy(1,2,4) = 2;
+    F_dpdpdy(2,1,4) = 2;
+    F_dpdpdy(2,2,5) = 2;
 
     return F_dpdpdy;
 }
@@ -221,10 +226,15 @@ xt::xarray<double> ellipsoid_dpdydy(const xt::xarray<double>& A) {
     int dim_p = 3, dim_y = 9, dim_A_flat = 6;
     xt::xarray<double> F_dpdydy = xt::zeros<double>({dim_p, dim_y, dim_y});
     xt::xarray<double> tmp = xt::zeros<double>({dim_p, dim_p, dim_A_flat});
-    for (int i = 0; i < dim_A_flat; ++i){
-        tmp(i/dim_p,i%dim_p,i) = -2;
-        tmp(i%dim_p,i/dim_p,i) = -2;
-    }
+    tmp(0,0,0) = -2;
+    tmp(0,1,1) = -2;
+    tmp(1,0,1) = -2;
+    tmp(0,2,2) = -2;
+    tmp(2,0,2) = -2;
+    tmp(1,1,3) = -2;
+    tmp(1,2,4) = -2;
+    tmp(2,1,4) = -2;
+    tmp(2,2,5) = -2;
 
     xt::view(F_dpdydy, xt::all(), xt::range(dim_A_flat, dim_y), xt::range(0, dim_A_flat)) = tmp;
     xt::view(F_dpdydy, xt::all(), xt::range(0, dim_A_flat), xt::range(dim_A_flat, dim_y)) = xt::transpose(tmp, {0,2,1});
@@ -232,7 +242,7 @@ xt::xarray<double> ellipsoid_dpdydy(const xt::xarray<double>& A) {
     return F_dpdydy;
 }
 
-xt::xarray<double> RDRT_dq(const xt::xarray<double>& q, const xt::xarray<double>& D, const xt::xarray<double>& R){
+xt::xarray<double> ellipsoid_RDRT_dq(const xt::xarray<double>& q, const xt::xarray<double>& D, const xt::xarray<double>& R){
     // Compute d(R @ D @ R.T)/dq
     // q: input vector of dimension 4
     // D: diagonal matrix of dimension 3 x 3
@@ -284,7 +294,7 @@ xt::xarray<double> RDRT_dq(const xt::xarray<double>& q, const xt::xarray<double>
     return RDRT_dq;
 }
 
-xt::xarray<double> RDRT_dqdq(const xt::xarray<double>& q, const xt::xarray<double>& D){
+xt::xarray<double> ellipsoid_RDRT_dqdq(const xt::xarray<double>& q, const xt::xarray<double>& D){
     // Compute d^2(R @ D @ R.T)/dqdq
     // q: input vector of dimension 4
     // D: diagonal matrix of dimension 3 x 3
@@ -429,7 +439,7 @@ std::tuple<double, xt::xarray<double>, xt::xarray<double>> getGradientEllipsoids
     double dual_var = getDualVariable(F1_dp, F2_dp);
     xt::xarray<double> alpha_dy = getGradientGeneral(dual_var, F1_dp, F2_dp, F1_dy, F2_dy, F1_dpdp, F2_dpdp, F1_dpdy, F2_dpdy);
 
-    xt::xarray<double> M_dq = RDRT_dq(q, D, R); // shape dim_A_flat x dim_q
+    xt::xarray<double> M_dq = ellipsoid_RDRT_dq(q, D, R); // shape dim_A_flat x dim_q
     xt::xarray<double> y_dx = xt::zeros<double>({dim_y, dim_x}); // shape dim_y x dim_x
     xt::view(y_dx, xt::range(0, dim_A_flat), xt::range(0, dim_q)) = M_dq;
     y_dx(6,4) = 1;
@@ -479,8 +489,8 @@ std::tuple<double, xt::xarray<double>, xt::xarray<double>, xt::xarray<double>> g
             F1_dp, F2_dp, F1_dy, F2_dy, F1_dpdp, F2_dpdp, F1_dpdy, F2_dpdy, F1_dydy, F2_dydy,
             F1_dpdpdp, F2_dpdpdp, F1_dpdpdy, F2_dpdpdy, F1_dpdydy, F2_dpdydy);
 
-    xt::xarray<double> M_dq = RDRT_dq(q, D, R); // shape dim_A_flat x dim_q
-    xt::xarray<double> M_dqdq = RDRT_dqdq(q, D); // shape dim_A_flat x dim_q x dim_q
+    xt::xarray<double> M_dq = ellipsoid_RDRT_dq(q, D, R); // shape dim_A_flat x dim_q
+    xt::xarray<double> M_dqdq = ellipsoid_RDRT_dqdq(q, D); // shape dim_A_flat x dim_q x dim_q
 
     xt::xarray<double> y_dx = xt::zeros<double>({dim_y, dim_x}); // shape dim_y x dim_x
     xt::view(y_dx, xt::range(0, dim_A_flat), xt::range(0, dim_q)) = M_dq;
