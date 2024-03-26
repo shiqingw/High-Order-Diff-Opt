@@ -22,23 +22,29 @@ a = np.random.rand(3)
 b = np.random.rand(3) + 5
 
 alpha, p_rimon, alpha_dx, alpha_dxdx = DOC.getGradientAndHessianEllipsoids(a,q,D,R,B,b)
-print(alpha_dxdx)
+# print(alpha_dxdx)
 print()
 
-euler = np.array([0.01, 0.01, 0.01])*0
+euler = np.array([0.01, 0.01, 0.01])
 rot_perturb = Rotation.from_euler('zyx', euler)
 R_perturb = rot_perturb.as_matrix()
 R_new = R_perturb @ R 
 q_new = Rotation.from_matrix(R_new).as_quat()
 q_perturb = q_new - q
-a_new = a + np.random.rand(3)
+a_new = a + np.random.rand(3)*0.1
 a_perturb = a_new - a
 alpha_new, p_rimon_new, alpha_dx_new, alpha_dxdx_new = DOC.getGradientAndHessianEllipsoids(a_new,q_new,D,R_new,B,b)
 
 delta = np.concatenate([q_perturb, a_perturb])
-alpha_dx_approx = alpha_dxdx @ delta + alpha_dx
+alpha_approx = alpha_dx @ delta + alpha
+alpha_dx_approx = alpha_dxdx @ delta + alpha_dx 
 
 print("delta:", delta)
+print("alpha:", alpha)
+print("alpha_new:", alpha_new)
+print("alpha_approx:", alpha_approx)
+print()
+
 print("alpha_dx:", alpha_dx)
 print("alpha_dx_new:", alpha_dx_new)
 print("alpha_dx_approx:", alpha_dx_approx)

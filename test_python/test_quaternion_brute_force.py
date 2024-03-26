@@ -4,6 +4,7 @@ sys.path.append(str(Path(__file__).parent.parent))
 import numpy as np
 import torch
 import timeit
+import cores_cpp.diffOptCpp as DOC
 from cores.differentiable_optimization.ellipsoid_quat_pos_brute_force import Ellipsoid_Quat_Pos
 from cores.utils.rotation_utils import get_rot_matrix_from_quat, get_quat_from_rot_matrix, get_rot_matrix_from_euler_zyx
 from cores.configuration.configuration import Configuration
@@ -55,9 +56,9 @@ print("==> Compute the gradient")
 #     with record_function("get_gradient"):
 #         F1, p_rimon, alpha_dx = DO.get_gradient(a_torch, quat_torch, D_torch, R_torch, B_torch, b_torch)
 
-F1, p_rimon, alpha_dx = DO.get_gradient(a_torch, quat_torch, D_torch, R_torch, B_torch, b_torch)
-print("p_rimon: ", p_rimon)
-print("alpha_dx: ", alpha_dx)
+F1_torch, p_rimon_torch, alpha_dx_torch = DO.get_gradient(a_torch, quat_torch, D_torch, R_torch, B_torch, b_torch)
+print("p_rimon_torch: ", p_rimon_torch)
+print("alpha_dx_torch: ", alpha_dx_torch)
 
 # Compute the gradient and hessian
 print("==> Compute the gradient and hessian")
@@ -68,10 +69,15 @@ print("==> Compute the gradient and hessian")
 #     with record_function("get_gradient_and_hessian"):
 #         F1, p_rimon, alpha_dx, alpha_dxdx = DO.get_gradient_and_hessian(a_torch, quat_torch, D_torch, R_torch, B_torch, b_torch)
 
-F1, p_rimon, alpha_dx, alpha_dxdx = DO.get_gradient_and_hessian(a_torch, quat_torch, D_torch, R_torch, B_torch, b_torch)
-print("p_rimon: ", p_rimon)
-print("alpha_dx: ", alpha_dx)
-print("alpha_dxdx: ", alpha_dxdx)
+F1_torch, p_rimon_torch, alpha_dx_torch, alpha_dxdx_torch = DO.get_gradient_and_hessian(a_torch, quat_torch, D_torch, R_torch, B_torch, b_torch)
+print("p_rimon_torch: ", p_rimon_torch)
+print("alpha_dx_torch: ", alpha_dx_torch)
+print("alpha_dxdx_torch: ", alpha_dxdx_torch)
+
+F1, p_rimon, alpha_dx, alpha_dxdx = DOC.getGradientAndHessianEllipsoids(a, quat, D, R, B, b)
+print("p_rimon: ", p_rimon_torch - p_rimon)
+print("alpha_dx: ", alpha_dx_torch - alpha_dx)
+print("alpha_dxdx: ", alpha_dxdx_torch - alpha_dxdx)
 
 # euler = [0.01,0.01,0.01]
 # R_new = get_rot_matrix_from_euler_zyx(euler)

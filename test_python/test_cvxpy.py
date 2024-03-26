@@ -6,7 +6,6 @@ import cvxpy as cp
 import numpy as np
 import time
 import timeit
-from cores.utils.osqp_utils import init_osqp
 from cores.configuration.configuration import Configuration
 config = Configuration()
 
