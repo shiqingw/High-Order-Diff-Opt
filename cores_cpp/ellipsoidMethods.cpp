@@ -203,7 +203,7 @@ xt::xarray<double> ellipsoid_dpdpdy(const xt::xarray<double>& A) {
     // p: input vector of dimension 3
     // a: center of the ellipsoid, dimension 3
     // A: real symmetric quadratic coefficient matrix, dimension 3 x 3
-    int dim_p = 3, dim_y = 9, dim_A_flat = 6;
+    int dim_p = 3, dim_y = 9;
     xt::xarray<double> F_dpdpdy = xt::zeros<double>({dim_p, dim_p, dim_y});
     F_dpdpdy(0,0,0) = 2;
     F_dpdpdy(0,1,1) = 2;

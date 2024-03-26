@@ -20,7 +20,7 @@ setup(
             library_dirs=["/usr/lib/x86_64-linux-gnu/lapack"],  # LAPACK library directory
             libraries=["lapack"],  # Link against LAPACK
             language='c++',
-            extra_compile_args=['-std=c++14'],
+            extra_compile_args=['-std=c++14', '-g', '-O0'],
         ),
     ],
     zip_safe=False,

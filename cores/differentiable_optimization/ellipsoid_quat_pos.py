@@ -114,7 +114,7 @@ class Ellipsoid_Quat_Pos():
         y_dx[:,0:6,0:4] = RDRT_dq
         y_dx[:,6:9,4:7] = torch.eye(3, dtype=A_torch.dtype, device=A_torch.device)
         alpha_dx = torch.matmul(alpha_dy.unsqueeze(1), y_dx).squeeze(1) # shape (batch_size, 4+dim(p))
-        print("pass")
+        
         # Compute the hessian wrt x = [qx, qy, qz, qw, a1, a2, a3]
         RDRT_dqdq = self.RDRT.RDRT_dqdq(q_torch, D_torch, R_torch)
         tmp1 = torch.matmul(torch.matmul(y_dx.transpose(-1, -2), alpha_dydy), y_dx) # shape (batch_size, 7, 7)

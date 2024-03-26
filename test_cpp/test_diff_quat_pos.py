@@ -93,12 +93,12 @@ number = 1000
 # print("Avg time to compute the gradient and hessian C++: ",
 #         timeit.timeit('DOC.getGradientAndHessianEllipsoids(a, quat, D, R, B, b)', globals=globals(), number=number)/number)
 
-# F, p_rimon, alpha_dx, alpha_dxdx = DOC.getGradientAndHessianEllipsoids(a, quat, D, R, B, b)
+F, p_rimon, alpha_dx, alpha_dxdx = DOC.getGradientAndHessianEllipsoids(a, quat, D, R, B, b)
 
-# print("F: ", F)
-# print("p: ", p_rimon)
-# print("alpha_dx: ", alpha_dx)
-# print("alpha_dxdx: ", alpha_dxdx)
+print("F: ", F)
+print("p: ", p_rimon)
+print("alpha_dx: ", alpha_dx)
+print("alpha_dxdx: ", alpha_dxdx)
 
 p_rimon_torch, alpha_dx_torch, alpha_dxdx_torch = DO.get_gradient_and_hessian(a_torch, quat_torch, D_torch, R_torch, B_torch, b_torch)
 print("p_rimon_torch: ", p_rimon_torch)

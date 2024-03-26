@@ -58,6 +58,7 @@ xt::xarray<double> ellipse_dy(const xt::xarray<double>& p, const xt::xarray<doub
     // p: input vector of dimension 2
     // a: center of the ellipse, dimension 2
     // A: real symmetric quadratic coefficient matrix, dimension 2 x 2
+    
     int dim_y = 5, dim_A_flat = 3;
     xt::xarray<double> vector = a - p;
     xt::xarray<double> outer_prod = xt::linalg::outer(vector, vector);
@@ -113,7 +114,7 @@ xt::xarray<double> ellipse_dpdpdy(const xt::xarray<double>& A) {
     // p: input vector of dimension 2
     // a: center of the ellipse, dimension 2
     // A: real symmetric quadratic coefficient matrix, dimension 2 x 2
-    int dim_p = 2, dim_y = 5, dim_A_flat = 3;
+    int dim_p = 2, dim_y = 5;
     xt::xarray<double> F_dpdpdy = xt::zeros<double>({dim_p, dim_p, dim_y});
     F_dpdpdy(0,0,0) = 2;
     F_dpdpdy(0,1,1) = 2;
