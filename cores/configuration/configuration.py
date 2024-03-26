@@ -13,7 +13,7 @@ class Configuration(object):
         self.np_dtype = np.float32
         self.pt_dtype = torch.float32
         self.torch_dtype = torch.float32
-        # self.dpi = 30
+        self.dpi = 30
         self.pic_format = 'pdf'
 
         if platform.system() == 'Darwin':

@@ -1,0 +1,16 @@
+{
+    "system_name": "Quadrotor",
+    "seed": 0,
+
+    "obstacle_config":{
+        "ball_radius": 1.1,
+        "ball_position": [0.0, 0.0]
+    },
+
+    "CBF_config":{
+        "active": 1,
+        "alpha0": 1.0,
+        "gamma1": 2.0,
+        "gamma2": 2.0
+    }
+}
