@@ -22,7 +22,6 @@ class Ellipsoid_Quat_Pos():
     def __init__(self):
         self.SF = Ellipsoid_Symmetric()
         self.RDRT = Quaternion_RDRT_Symmetric()
-        self.solver = rimon_method_pytorch
     
     def get_gradient(self, a_torch, q_torch, D_torch, R_torch, B_torch, b_torch):
         """
@@ -43,7 +42,7 @@ class Ellipsoid_Quat_Pos():
         
         # y = [A11, A12, A13, A22, A23, A33, a1, a2, a3]
         A_torch = torch.matmul(torch.matmul(R_torch, D_torch), R_torch.transpose(-1,-2)) # shape (batch_size, dim(p), dim(p))
-        p_rimon = self.solver(A_torch, a_torch, B_torch, b_torch)
+        p_rimon = rimon_method_pytorch(A_torch, a_torch, B_torch, b_torch)
         F1_dp = self.SF.F_dp(p_rimon, A_torch, a_torch)
         F2_dp = self.SF.F_dp(p_rimon, B_torch, b_torch)
         F1_dpdp = self.SF.F_dpdp(p_rimon, A_torch, a_torch)
@@ -83,10 +82,9 @@ class Ellipsoid_Quat_Pos():
         """
 
         batch_size, dim_p = a_torch.shape
-        
         # y = [A11, A12, A13, A22, A23, A33, a1, a2, a3]
         A_torch = torch.matmul(torch.matmul(R_torch, D_torch), R_torch.transpose(-1,-2)) # shape (batch_size, dim(p), dim(p))
-        p_rimon = self.solver(A_torch, a_torch, B_torch, b_torch)
+        p_rimon = rimon_method_pytorch(A_torch, a_torch, B_torch, b_torch)
         F1_dp = self.SF.F_dp(p_rimon, A_torch, a_torch)
         F2_dp = self.SF.F_dp(p_rimon, B_torch, b_torch)
         F1_dpdp = self.SF.F_dpdp(p_rimon, A_torch, a_torch)
@@ -108,7 +106,6 @@ class Ellipsoid_Quat_Pos():
         # alpha_dydy: shape (batch_size, 9, 9)
         alpha_dy, alpha_dydy = get_gradient_and_hessian_pytorch(dual_vars, F1_dp, F2_dp, F1_dy, F2_dy, F1_dpdp, F2_dpdp, F1_dpdy, F2_dpdy,
                                      F1_dydy, F2_dydy, F1_dpdpdp, F2_dpdpdp, F1_dpdpdy, F2_dpdpdy, F1_dpdydy, F2_dpdydy)
-        
         # Compute the gradient wrt x = [qx, qy, qz, qw, a1, a2, a3]
         RDRT_dq = self.RDRT.RDRT_dq(q_torch, D_torch, R_torch) # shape (batch_size, 6, 4)
         dim_y = 9
@@ -117,7 +114,7 @@ class Ellipsoid_Quat_Pos():
         y_dx[:,0:6,0:4] = RDRT_dq
         y_dx[:,6:9,4:7] = torch.eye(3, dtype=A_torch.dtype, device=A_torch.device)
         alpha_dx = torch.matmul(alpha_dy.unsqueeze(1), y_dx).squeeze(1) # shape (batch_size, 4+dim(p))
-
+        print("pass")
         # Compute the hessian wrt x = [qx, qy, qz, qw, a1, a2, a3]
         RDRT_dqdq = self.RDRT.RDRT_dqdq(q_torch, D_torch, R_torch)
         tmp1 = torch.matmul(torch.matmul(y_dx.transpose(-1, -2), alpha_dydy), y_dx) # shape (batch_size, 7, 7)
