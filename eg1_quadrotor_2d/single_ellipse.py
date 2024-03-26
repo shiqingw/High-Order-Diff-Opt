@@ -51,13 +51,18 @@ if __name__ == '__main__':
     # Obstacles
     obstacle_config = test_settings["obstacle_config"]
     obstacle_artists = []
-    circle = mp.Circle(obstacle_config["ball_position"], obstacle_config["ball_radius"], 
-                    facecolor="tab:blue", alpha=1, edgecolor="black", linewidth=1, zorder=1.8)
-    obstacle_artists.append(circle)
+    ellipse = mp.Ellipse(obstacle_config["ellipse_center"], 2*obstacle_config["half_ellipse_width"], 
+                         2*obstacle_config["half_ellipse_height"], angle=obstacle_config["ellipse_orientation"]/np.pi*180,
+                         facecolor="tab:blue", alpha=1, edgecolor="black", linewidth=1, zorder=1.8)
+    obstacle_artists.append(ellipse)
 
-    obstacle_ellipse_coef_np = (np.eye(2)/obstacle_config["ball_radius"]).astype(config.np_dtype)
-    obstacle_ellipse_coef_np = obstacle_ellipse_coef_np @ obstacle_ellipse_coef_np.T
-    obstacle_pos_np = np.array(obstacle_config["ball_position"], dtype=config.np_dtype)
+    obstacle_ellipse_coef_np = np.diag([1.0/obstacle_config["half_ellipse_width"], 
+                        1.0/obstacle_config["half_ellipse_height"]]).astype(config.np_dtype)
+    obstacle_orientation = np.array([[np.cos(obstacle_config["ellipse_orientation"]), -np.sin(obstacle_config["ellipse_orientation"])],
+                                    [np.sin(obstacle_config["ellipse_orientation"]), np.cos(obstacle_config["ellipse_orientation"])]],
+                                    dtype=config.np_dtype)
+    obstacle_ellipse_coef_np = obstacle_orientation @ obstacle_ellipse_coef_np @ obstacle_ellipse_coef_np.T @ obstacle_orientation.T
+    obstacle_pos_np = np.array(obstacle_config["ellipse_center"], dtype=config.np_dtype)
 
     # Tracking control via LQR
     t_final = 10

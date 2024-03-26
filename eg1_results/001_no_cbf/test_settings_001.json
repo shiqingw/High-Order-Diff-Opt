@@ -10,7 +10,7 @@
     },
 
     "CBF_config":{
-        "active": 1,
+        "active": 0,
         "alpha0": 1.2,
         "gamma1": 2.0,
         "gamma2": 2.0
