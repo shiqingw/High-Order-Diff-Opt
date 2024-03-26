@@ -135,6 +135,7 @@ xt::xarray<double> ellipsoid_dy(const xt::xarray<double>& p, const xt::xarray<do
     // p: input vector of dimension 3
     // a: center of the ellipsoid, dimension 3
     // A: real symmetric quadratic coefficient matrix, dimension 3 x 3
+    
     int dim_y = 9, dim_A_flat = 6;
     xt::xarray<double> vector = a - p;
     xt::xarray<double> outer_prod = xt::linalg::outer(vector, vector);

@@ -90,8 +90,8 @@ number = 1000
 # print("Avg time to compute the gradient using trace: ",
 #       timeit.timeit('traced_get_gradient_and_hessian(a_torch, quat_torch, D_torch, R_torch, B_torch, b_torch)', globals=globals(), number=number)/number)
 
-# print("Avg time to compute the gradient and hessian C++: ",
-#         timeit.timeit('DOC.getGradientAndHessianEllipsoids(a, quat, D, R, B, b)', globals=globals(), number=number)/number)
+print("Avg time to compute the gradient and hessian C++: ",
+        timeit.timeit('DOC.getGradientAndHessianEllipsoids(a, quat, D, R, B, b)', globals=globals(), number=number)/number)
 
 F, p_rimon, alpha_dx, alpha_dxdx = DOC.getGradientAndHessianEllipsoids(a, quat, D, R, B, b)
 
