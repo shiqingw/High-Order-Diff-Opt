@@ -17,7 +17,7 @@ setup(
                           "/User1-SSD/shiqing/miniconda3/envs/py311/include/xtensor-blas",
                           "/User1-SSD/shiqing/miniconda3/envs/py311/include/xtensor-python",
                           "/User1-SSD/shiqing/miniconda3/envs/py311/lib/python3.11/site-packages/numpy/core/include"],
-            library_dirs=["/opt/homebrew/opt/lapack/lib"],  # LAPACK library directory
+            library_dirs=["/usr/lib/x86_64-linux-gnu/lapack"],  # LAPACK library directory
             libraries=["lapack"],  # Link against LAPACK
             language='c++',
             extra_compile_args=['-std=c++14'],
