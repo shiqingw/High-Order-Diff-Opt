@@ -8,7 +8,7 @@
         "rec_center": [0.0, 0.0],
         "rec_rotation_point": "center",
         "obstacle_rot_angle": 0.0,
-        "kappa": 100
+        "kappa": 10
     },
 
     "cvxpy_config":{

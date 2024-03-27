@@ -94,7 +94,7 @@ if __name__ == '__main__':
 
     x_traj = np.zeros([horizon+1, system.n_states]).astype(config.np_dtype)
     t_traj = np.linspace(0, t_final, horizon+1)
-    angular_vel_traj = np.pi/t_final
+    angular_vel_traj = 2*np.pi/t_final
     semi_major_axis = 2
     semi_minor_axis = 1
     x_traj[:,0] = semi_major_axis * np.cos(angular_vel_traj*t_traj) # x
@@ -109,7 +109,7 @@ if __name__ == '__main__':
         A_list[i] = A
         B_list[i] = B
 
-    Q_lqr = np.diag([100,100,0,10,10,0])
+    Q_lqr = np.diag([100,100,0,100,100,0])
     Q_list = np.array([Q_lqr]*(horizon +1))
     R_lqr = np.diag([1,1])
     R_list = np.array([R_lqr]*(horizon))
@@ -136,7 +136,7 @@ if __name__ == '__main__':
     print("==> Create records")
     times = np.linspace(0, t_final, horizon+1).astype(config.np_dtype)
     states = np.zeros([horizon+1, system.n_states], dtype=config.np_dtype)
-    states[0,:] = x_traj[0,:] + np.array([1,0,0,0,0,0])
+    states[0,:] = x_traj[0,:] + np.array([0,1.3,0,0,0,0])
     controls = np.zeros([horizon, system.n_controls], dtype=config.np_dtype)
     desired_controls = np.zeros([horizon, system.n_controls], dtype=config.np_dtype)
     phi1s = np.zeros(horizon, dtype=config.np_dtype)
@@ -165,22 +165,29 @@ if __name__ == '__main__':
         _ellipse_b.value = -2 * ellipse_Q_np @ drone_pos_np
         _ellipse_c.value = drone_pos_np.T @ ellipse_Q_np @ drone_pos_np
 
-        time_cvxpy_start = time.time()
-        problem.solve(warm_start=True, solver=cp.ECOS)
-        time_cvxpy_end = time.time()
-
-        # Solve the scaling function, gradient, and Hessian
-        p_sol_np = np.squeeze(_p.value)
-        time_diff_helper_start = time.time()
-        alpha, alpha_dx_tmp, alpha_dxdx_tmp = DOC.getGradientAndHessianEllipseAndLogSumExp(p_sol_np, drone_pos_np,
-                                        drone_ori_np, D_np, R_b_to_w_np, A_obs_np, b_obs_np, obstacle_kappa)
-        time_diff_helper_end = time.time()
-        
-        # Evaluate the CBF
-        CBF = alpha - alpha0
+        try:
+            time_cvxpy_start = time.time()
+            problem.solve(warm_start=True, solver=cp.ECOS)
+            time_cvxpy_end = time.time()
+            # Solve the scaling function, gradient, and Hessian
+            p_sol_np = np.squeeze(_p.value)
+            time_diff_helper_start = time.time()
+            alpha, alpha_dx_tmp, alpha_dxdx_tmp = DOC.getGradientAndHessianEllipseAndLogSumExp(p_sol_np, drone_pos_np,
+                                            drone_ori_np, D_np, R_b_to_w_np, A_obs_np, b_obs_np, obstacle_kappa)
+            time_diff_helper_end = time.time()
+            
+            # Evaluate the CBF
+            CBF = alpha - alpha0
+        except Exception as e:
+            CBF = 0
+            time_cvxpy_start = 0
+            time_cvxpy_end = 0
+            time_diff_helper_start = 0
+            time_diff_helper_end = 0
         
         # Nominal control
         u_nominal = lqr_controller(state, i)
+
         if CBF_config["active"]:
             # Order of states = [x, y, theta, vx, vy omega]
             # Order of parameters in grad and hessian: [theta, x, y]
