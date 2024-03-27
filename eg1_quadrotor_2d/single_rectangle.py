@@ -9,8 +9,9 @@ sys.path.append(str(Path(__file__).parent.parent))
 import matplotlib.pyplot as plt
 import matplotlib.patches as mp
 import time
+import cvxpy as cp
 
-from cores.utils.utils import seed_everything, solve_LQR_tracking, save_dict, load_dict
+from cores.utils.utils import seed_everything, solve_LQR_tracking, save_dict, load_dict, points2d_to_ineq
 from cores.utils.proxsuite_utils import init_proxsuite_qp
 from cores.dynamical_systems.create_system import get_system
 import cores_cpp.diffOptCpp as DOC
@@ -18,7 +19,7 @@ from cores.configuration.configuration import Configuration
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--exp_num', default=1, type=int, help='test case number')
+    parser.add_argument('--exp_num', default=2, type=int, help='test case number')
     args = parser.parse_args()
 
     # Create result directory
@@ -51,18 +52,40 @@ if __name__ == '__main__':
     # Obstacles
     obstacle_config = test_settings["obstacle_config"]
     obstacle_artists = []
-    ellipse = mp.Ellipse(obstacle_config["ellipse_center"], 2*obstacle_config["half_ellipse_width"], 
-                         2*obstacle_config["half_ellipse_height"], angle=obstacle_config["ellipse_orientation"]/np.pi*180,
-                         facecolor="tab:blue", alpha=1, edgecolor="black", linewidth=1, zorder=1.8)
-    obstacle_artists.append(ellipse)
+    obstacle_width = obstacle_config["rec_width"]
+    obstacle_height = obstacle_config["rec_height"]
+    obstacle_center = np.array(obstacle_config["rec_center"], dtype=config.np_dtype)
+    obstacle_left_bottom = obstacle_center - np.array([obstacle_width/2, obstacle_height/2], dtype=config.np_dtype)
+    obstacle_rot_angle = obstacle_config["obstacle_rot_angle"]/np.pi*180
+    obstacle_kappa = obstacle_config["kappa"]
+    rectangle = mp.Rectangle(xy=obstacle_left_bottom, width=obstacle_width, height=obstacle_height, angle=obstacle_rot_angle,
+                          rotation_point=obstacle_config["rec_rotation_point"],
+                          facecolor="tab:blue", alpha=1, edgecolor="black", linewidth=1, zorder=1.8)
+    obstacle_artists.append(rectangle)
+    obstacle_corners_in_b = np.array([[obstacle_center[0]+obstacle_width/2, obstacle_center[1]+obstacle_height/2],
+                                [obstacle_center[0]+obstacle_width/2, obstacle_center[1]-obstacle_height/2],
+                                [obstacle_center[0]-obstacle_width/2, obstacle_center[1]-obstacle_height/2],
+                                [obstacle_center[0]-obstacle_width/2, obstacle_center[1]+obstacle_height/2]], dtype=config.np_dtype)
+    rotation_point = obstacle_center
+    obstacle_R_b_to_w = np.array([[np.cos(obstacle_rot_angle), -np.sin(obstacle_rot_angle)],
+                                [np.sin(obstacle_rot_angle), np.cos(obstacle_rot_angle)]], dtype=config.np_dtype)
+    obstacle_corners_in_w = (obstacle_corners_in_b - rotation_point) @ obstacle_R_b_to_w.T + rotation_point
+    A_obs_np, b_obs_np = points2d_to_ineq(obstacle_corners_in_w)
+    n_cons_obs = A_obs_np.shape[0]
 
-    obstacle_ellipse_coef_np = np.diag([1.0/obstacle_config["half_ellipse_width"], 
-                        1.0/obstacle_config["half_ellipse_height"]]).astype(config.np_dtype)
-    obstacle_rot_angle = obstacle_config["ellipse_orientation"]
-    obstacle_orientation = np.array([[np.cos(obstacle_rot_angle), -np.sin(obstacle_rot_angle)],
-                                    [np.sin(obstacle_rot_angle), np.cos(obstacle_rot_angle)]], dtype=config.np_dtype)
-    obstacle_ellipse_coef_np = obstacle_orientation @ obstacle_ellipse_coef_np @ obstacle_ellipse_coef_np.T @ obstacle_orientation.T
-    obstacle_pos_np = np.array(obstacle_config["ellipse_center"], dtype=config.np_dtype)
+    # Define cvxpy problem
+    cvxpy_config = test_settings["cvxpy_config"]
+    x_max_np = cvxpy_config["x_max"]
+    print("==> Define cvxpy problem")
+    _p = cp.Variable(2)
+    _ellipse_Q_sqrt = cp.Parameter((2,2))
+    _ellipse_b = cp.Parameter(2)
+    _ellipse_c = cp.Parameter()
+    obj = cp.Minimize(cp.sum_squares(_ellipse_Q_sqrt @ _p) + _ellipse_b.T @ _p + _ellipse_c)
+    cons = [cp.log_sum_exp(obstacle_kappa*(A_obs_np @ _p + b_obs_np)-x_max_np) - np.log(n_cons_obs) + x_max_np <= 0]
+    problem = cp.Problem(obj, cons)
+    assert problem.is_dcp()
+    assert problem.is_dpp()
 
     # Tracking control via LQR
     t_final = 10
@@ -71,7 +94,7 @@ if __name__ == '__main__':
 
     x_traj = np.zeros([horizon+1, system.n_states]).astype(config.np_dtype)
     t_traj = np.linspace(0, t_final, horizon+1)
-    angular_vel_traj = 2*np.pi/t_final
+    angular_vel_traj = np.pi/t_final
     semi_major_axis = 2
     semi_minor_axis = 1
     x_traj[:,0] = semi_major_axis * np.cos(angular_vel_traj*t_traj) # x
@@ -113,7 +136,7 @@ if __name__ == '__main__':
     print("==> Create records")
     times = np.linspace(0, t_final, horizon+1).astype(config.np_dtype)
     states = np.zeros([horizon+1, system.n_states], dtype=config.np_dtype)
-    states[0,:] = x_traj[0,:] + np.array([0,1,0,0,0,0])
+    states[0,:] = x_traj[0,:] + np.array([1,0,0,0,0,0])
     controls = np.zeros([horizon, system.n_controls], dtype=config.np_dtype)
     desired_controls = np.zeros([horizon, system.n_controls], dtype=config.np_dtype)
     phi1s = np.zeros(horizon, dtype=config.np_dtype)
@@ -135,10 +158,22 @@ if __name__ == '__main__':
         R_b_to_w_np = np.array([[np.cos(drone_ori_np), -np.sin(drone_ori_np)],
                             [np.sin(drone_ori_np), np.cos(drone_ori_np)]]).astype(config.np_dtype)
 
+        # Pass parameter values to cvxpy problem
+        ellipse_Q_sqrt_np = D_sqrt_np @ R_b_to_w_np.T
+        ellipse_Q_np = ellipse_Q_sqrt_np.T @ ellipse_Q_sqrt_np
+        _ellipse_Q_sqrt.value = ellipse_Q_sqrt_np
+        _ellipse_b.value = -2 * ellipse_Q_np @ drone_pos_np
+        _ellipse_c.value = drone_pos_np.T @ ellipse_Q_np @ drone_pos_np
+
+        time_cvxpy_start = time.time()
+        problem.solve(warm_start=True, solver=cp.ECOS)
+        time_cvxpy_end = time.time()
+
         # Solve the scaling function, gradient, and Hessian
+        p_sol_np = np.squeeze(_p.value)
         time_diff_helper_start = time.time()
-        alpha, p_rimon_np, alpha_dx_tmp, alpha_dxdx_tmp = DOC.getGradientAndHessianEllipses(drone_pos_np, drone_ori_np, D_np, 
-                                R_b_to_w_np, obstacle_ellipse_coef_np, obstacle_pos_np)
+        alpha, alpha_dx_tmp, alpha_dxdx_tmp = DOC.getGradientAndHessianEllipseAndLogSumExp(p_sol_np, drone_pos_np,
+                                        drone_ori_np, D_np, R_b_to_w_np, A_obs_np, b_obs_np, obstacle_kappa)
         time_diff_helper_end = time.time()
         
         # Evaluate the CBF
@@ -203,6 +238,7 @@ if __name__ == '__main__':
         cbf_values[i] = CBF
         phi1s[i] = phi1
         phi2s[i] = phi2
+        time_cvxpy[i] = time_cvxpy_end - time_cvxpy_start
         time_diff_helper[i] = time_diff_helper_end - time_diff_helper_start
         time_cbf_qp[i] = time_cbf_qp_end - time_cbf_qp_start
         time_control_loop[i] = time_control_loop_end - time_control_loop_start

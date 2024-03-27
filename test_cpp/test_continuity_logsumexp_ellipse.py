@@ -50,8 +50,8 @@ p_np = _p.value
 
 alpha, alpha_dx, alpha_dxdx = DOC.getGradientAndHessianEllipseAndLogSumExp(p_np, a_np, theta_np, D_np, R_np, A_obs_np, b_obs_np, kappa_obs)
 
-delta_theta = np.random.rand()*0.01
-delta_a = np.random.rand(2)*0.01
+delta_theta = np.random.rand()*0.1
+delta_a = np.random.rand(2)*0.1
 
 theta_np_new = theta_np + delta_theta
 a_np_new = a_np + delta_a
