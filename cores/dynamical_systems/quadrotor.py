@@ -132,7 +132,8 @@ class Quadrotor2D():
             t[i+1] = t[i] + self.delta_t
         return t, x, u
     
-    def animate_robot(self, x, u, dt, save_video_path, plot_bounding_ellipse=True, plot_traj=True, obstacles=None):
+    def animate_robot(self, x, u, dt, save_video_path, plot_bounding_ellipse=True, plot_traj=True, obstacles=None,
+                      robot_constraints=None, obstacle_constraints=None):
         """
         This function makes an animation showing the behavior of the quadrotor
         takes as input the result of a simulation (with dt=0.01s)
@@ -190,6 +191,14 @@ class Quadrotor2D():
         if obstacles is not None:
             for obstacle in obstacles:
                 ax.add_patch(obstacle)
+        
+        if robot_constraints is not None:
+            robot_constraints = robot_constraints[::steps]
+            robot_constraint_points = ax.scatter([],[], color='g', alpha=0.01, zorder=2.2)
+        
+        if obstacle_constraints is not None:
+            obstacle_constraints = obstacle_constraints[::steps]
+            obstacles_constraint_points = ax.scatter([],[], color='r', alpha=0.01, zorder=2.2)
             
         def _animate(i):
             for l in list_of_lines: #reset all lines
@@ -246,6 +255,14 @@ class Quadrotor2D():
             
             if obstacles is not None:
                 all_artists = all_artists + obstacles
+            
+            if robot_constraints is not None:
+                robot_constraint_points.set_offsets(robot_constraints[i])
+                all_artists = all_artists + [robot_constraint_points]
+            
+            if obstacle_constraints is not None:
+                obstacles_constraint_points.set_offsets(obstacle_constraints[i])
+                all_artists = all_artists + [obstacles_constraint_points]
 
             return all_artists
 

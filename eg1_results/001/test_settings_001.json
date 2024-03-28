@@ -1,18 +1,19 @@
 {
     "system_name": "Quadrotor",
     "seed": 0,
+    "debug_constraints": 0,
 
     "obstacle_config":{
         "ellipse_center": [0.0, 0.0],
         "half_ellipse_width": 1.4,
         "half_ellipse_height": 1.1,
-        "ellipse_orientation": 0.2
+        "ellipse_orientation": 0.4
     },
 
     "CBF_config":{
         "active": 1,
-        "alpha0": 1.2,
-        "gamma1": 2.0,
-        "gamma2": 2.0
+        "alpha0": 1.4,
+        "gamma1": 10.0,
+        "gamma2": 10.0
     }
 }

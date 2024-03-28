@@ -56,20 +56,20 @@ if __name__ == '__main__':
     obstacle_height = obstacle_config["rec_height"]
     obstacle_center = np.array(obstacle_config["rec_center"], dtype=config.np_dtype)
     obstacle_left_bottom = obstacle_center - np.array([obstacle_width/2, obstacle_height/2], dtype=config.np_dtype)
-    obstacle_rot_angle = obstacle_config["obstacle_rot_angle"]/np.pi*180
+    obstacle_rot_angle = obstacle_config["obstacle_rot_angle"]
     obstacle_kappa = obstacle_config["kappa"]
-    rectangle = mp.Rectangle(xy=obstacle_left_bottom, width=obstacle_width, height=obstacle_height, angle=obstacle_rot_angle,
+    rectangle = mp.Rectangle(xy=obstacle_left_bottom, width=obstacle_width, height=obstacle_height, angle=obstacle_rot_angle/np.pi*180,
                           rotation_point=obstacle_config["rec_rotation_point"],
                           facecolor="tab:blue", alpha=1, edgecolor="black", linewidth=1, zorder=1.8)
     obstacle_artists.append(rectangle)
-    obstacle_corners_in_b = np.array([[obstacle_center[0]+obstacle_width/2, obstacle_center[1]+obstacle_height/2],
-                                [obstacle_center[0]+obstacle_width/2, obstacle_center[1]-obstacle_height/2],
-                                [obstacle_center[0]-obstacle_width/2, obstacle_center[1]-obstacle_height/2],
-                                [obstacle_center[0]-obstacle_width/2, obstacle_center[1]+obstacle_height/2]], dtype=config.np_dtype)
+    obstacle_corners_in_b = np.array([[obstacle_width/2, obstacle_height/2],
+                                [obstacle_width/2, -obstacle_height/2],
+                                [-obstacle_width/2, -obstacle_height/2],
+                                [-obstacle_width/2, obstacle_height/2]], dtype=config.np_dtype)
     rotation_point = obstacle_center
     obstacle_R_b_to_w = np.array([[np.cos(obstacle_rot_angle), -np.sin(obstacle_rot_angle)],
                                 [np.sin(obstacle_rot_angle), np.cos(obstacle_rot_angle)]], dtype=config.np_dtype)
-    obstacle_corners_in_w = (obstacle_corners_in_b - rotation_point) @ obstacle_R_b_to_w.T + rotation_point
+    obstacle_corners_in_w = obstacle_corners_in_b @ obstacle_R_b_to_w.T + rotation_point
     A_obs_np, b_obs_np = points2d_to_ineq(obstacle_corners_in_w)
     n_cons_obs = A_obs_np.shape[0]
 
@@ -136,7 +136,7 @@ if __name__ == '__main__':
     print("==> Create records")
     times = np.linspace(0, t_final, horizon+1).astype(config.np_dtype)
     states = np.zeros([horizon+1, system.n_states], dtype=config.np_dtype)
-    states[0,:] = x_traj[0,:] + np.array([0,1.3,0,0,0,0])
+    states[0,:] = x_traj[0,:] + np.array([0,0.0,0,0,0,0])
     controls = np.zeros([horizon, system.n_controls], dtype=config.np_dtype)
     desired_controls = np.zeros([horizon, system.n_controls], dtype=config.np_dtype)
     phi1s = np.zeros(horizon, dtype=config.np_dtype)
@@ -146,6 +146,20 @@ if __name__ == '__main__':
     time_diff_helper = np.zeros(horizon, dtype=config.np_dtype)
     time_cbf_qp = np.zeros(horizon, dtype=config.np_dtype)
     time_control_loop = np.zeros(horizon, dtype=config.np_dtype)
+    if test_settings["debug_constraints"]:
+        debug_constraint_robot = []
+        debug_constraint_obstacle = []
+        x = np.linspace(-4, 4, 400)
+        y = np.linspace(-4, 4, 400)
+        X, Y = np.meshgrid(x, y)
+        X = np.reshape(X, (-1,))
+        Y = np.reshape(Y, (-1,))
+        def F_obs(X,Y):
+            XY_vec = np.column_stack((X,Y))
+            return np.log(np.sum(np.exp(obstacle_kappa*(XY_vec @ A_obs_np.T + b_obs_np)-x_max_np), axis=1))- np.log(n_cons_obs) + x_max_np + 1
+        def F_robot(X,Y,a,R):
+            XY_vec = np.column_stack((X,Y))
+            return np.sum(np.square((XY_vec-a) @ (D_sqrt_np @ R.T).T ), axis=1)
 
     # Forward simulate the system
     print("==> Forward simulate the system")
@@ -157,6 +171,14 @@ if __name__ == '__main__':
 
         R_b_to_w_np = np.array([[np.cos(drone_ori_np), -np.sin(drone_ori_np)],
                             [np.sin(drone_ori_np), np.cos(drone_ori_np)]]).astype(config.np_dtype)
+
+        if test_settings["debug_constraints"]:
+            F_robot_values = F_robot(X,Y,drone_pos_np,R_b_to_w_np)
+            F_obs_values = F_obs(X,Y)
+            F_robot_satisfied = np.column_stack((X[F_robot_values <= 1], Y[F_robot_values <= 1]))
+            F_obs_satisfied = np.column_stack((X[F_obs_values <= 1], Y[F_obs_values <= 1]))
+            debug_constraint_robot.append(F_robot_satisfied)
+            debug_constraint_obstacle.append(F_obs_satisfied)
 
         # Pass parameter values to cvxpy problem
         ellipse_Q_sqrt_np = D_sqrt_np @ R_b_to_w_np.T
@@ -253,7 +275,13 @@ if __name__ == '__main__':
     # Create animation
     print("==> Create animation")
     save_video_path = "{}/video.mp4".format(results_dir)
-    system.animate_robot(states, controls, dt, save_video_path, plot_bounding_ellipse=True, plot_traj=True, obstacles=obstacle_artists)
+    if test_settings["debug_constraints"]:
+        system.animate_robot(states, controls, dt, save_video_path, plot_bounding_ellipse=True, plot_traj=True,
+                         obstacles=obstacle_artists, robot_constraints=debug_constraint_robot,
+                         obstacle_constraints=debug_constraint_obstacle)
+    else:
+        system.animate_robot(states, controls, dt, save_video_path, plot_bounding_ellipse=True, plot_traj=True,
+                         obstacles=obstacle_artists)
 
     # Save summary
     print("==> Save dictionary")

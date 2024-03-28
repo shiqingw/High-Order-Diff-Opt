@@ -56,12 +56,12 @@ if __name__ == '__main__':
                          facecolor="tab:blue", alpha=1, edgecolor="black", linewidth=1, zorder=1.8)
     obstacle_artists.append(ellipse)
 
-    obstacle_ellipse_coef_np = np.diag([1.0/obstacle_config["half_ellipse_width"], 
+    obstacle_ellipse_D_sqrt_np = np.diag([1.0/obstacle_config["half_ellipse_width"], 
                         1.0/obstacle_config["half_ellipse_height"]]).astype(config.np_dtype)
     obstacle_rot_angle = obstacle_config["ellipse_orientation"]
     obstacle_orientation = np.array([[np.cos(obstacle_rot_angle), -np.sin(obstacle_rot_angle)],
                                     [np.sin(obstacle_rot_angle), np.cos(obstacle_rot_angle)]], dtype=config.np_dtype)
-    obstacle_ellipse_coef_np = obstacle_orientation @ obstacle_ellipse_coef_np @ obstacle_ellipse_coef_np.T @ obstacle_orientation.T
+    obstacle_ellipse_coef_np = obstacle_orientation @ obstacle_ellipse_D_sqrt_np @ obstacle_ellipse_D_sqrt_np.T @ obstacle_orientation.T
     obstacle_pos_np = np.array(obstacle_config["ellipse_center"], dtype=config.np_dtype)
 
     # Tracking control via LQR
@@ -86,7 +86,7 @@ if __name__ == '__main__':
         A_list[i] = A
         B_list[i] = B
 
-    Q_lqr = np.diag([100,100,0,10,10,0])
+    Q_lqr = np.diag([100,100,0,100,100,0])
     Q_list = np.array([Q_lqr]*(horizon +1))
     R_lqr = np.diag([1,1])
     R_list = np.array([R_lqr]*(horizon))
@@ -113,7 +113,7 @@ if __name__ == '__main__':
     print("==> Create records")
     times = np.linspace(0, t_final, horizon+1).astype(config.np_dtype)
     states = np.zeros([horizon+1, system.n_states], dtype=config.np_dtype)
-    states[0,:] = x_traj[0,:] + np.array([0,1,0,0,0,0])
+    states[0,:] = x_traj[0,:] + np.array([0,0,0,0,0,0])
     controls = np.zeros([horizon, system.n_controls], dtype=config.np_dtype)
     desired_controls = np.zeros([horizon, system.n_controls], dtype=config.np_dtype)
     phi1s = np.zeros(horizon, dtype=config.np_dtype)
@@ -123,6 +123,20 @@ if __name__ == '__main__':
     time_diff_helper = np.zeros(horizon, dtype=config.np_dtype)
     time_cbf_qp = np.zeros(horizon, dtype=config.np_dtype)
     time_control_loop = np.zeros(horizon, dtype=config.np_dtype)
+    if test_settings["debug_constraints"]:
+        debug_constraint_robot = []
+        debug_constraint_obstacle = []
+        x = np.linspace(-4, 4, 400)
+        y = np.linspace(-4, 4, 400)
+        X, Y = np.meshgrid(x, y)
+        X = np.reshape(X, (-1,))
+        Y = np.reshape(Y, (-1,))
+        def F_obs(X,Y):
+            XY_vec = np.column_stack((X,Y))
+            return np.sum(np.square((XY_vec-obstacle_pos_np) @ (obstacle_ellipse_D_sqrt_np.T @ obstacle_orientation.T).T ), axis=1)
+        def F_robot(X,Y,a,R):
+            XY_vec = np.column_stack((X,Y))
+            return np.sum(np.square((XY_vec-a) @ (D_sqrt_np @ R.T).T ), axis=1)
 
     # Forward simulate the system
     print("==> Forward simulate the system")
@@ -134,6 +148,14 @@ if __name__ == '__main__':
 
         R_b_to_w_np = np.array([[np.cos(drone_ori_np), -np.sin(drone_ori_np)],
                             [np.sin(drone_ori_np), np.cos(drone_ori_np)]]).astype(config.np_dtype)
+        
+        if test_settings["debug_constraints"]:
+            F_robot_values = F_robot(X,Y,drone_pos_np,R_b_to_w_np)
+            F_obs_values = F_obs(X,Y)
+            F_robot_satisfied = np.column_stack((X[F_robot_values <= 1], Y[F_robot_values <= 1]))
+            F_obs_satisfied = np.column_stack((X[F_obs_values <= 1], Y[F_obs_values <= 1]))
+            debug_constraint_robot.append(F_robot_satisfied)
+            debug_constraint_obstacle.append(F_obs_satisfied)
 
         # Solve the scaling function, gradient, and Hessian
         time_diff_helper_start = time.time()
@@ -210,7 +232,13 @@ if __name__ == '__main__':
     # Create animation
     print("==> Create animation")
     save_video_path = "{}/video.mp4".format(results_dir)
-    system.animate_robot(states, controls, dt, save_video_path, plot_bounding_ellipse=True, plot_traj=True, obstacles=obstacle_artists)
+    if test_settings["debug_constraints"]:
+        system.animate_robot(states, controls, dt, save_video_path, plot_bounding_ellipse=True, plot_traj=True,
+                         obstacles=obstacle_artists, robot_constraints=debug_constraint_robot,
+                         obstacle_constraints=debug_constraint_obstacle)
+    else:
+        system.animate_robot(states, controls, dt, save_video_path, plot_bounding_ellipse=True, plot_traj=True,
+                         obstacles=obstacle_artists)
 
     # Save summary
     print("==> Save dictionary")
