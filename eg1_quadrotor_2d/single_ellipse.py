@@ -170,7 +170,7 @@ if __name__ == '__main__':
         u_nominal = lqr_controller(state, i)
         if CBF_config["active"]:
             # Order of states = [x, y, theta, vx, vy omega]
-            # Order of parameters in grad and hessian: [theta, x, y]
+            # Order of parameters in alpha_dx_tmp and alpha_dxdx_tmp: [theta, x, y]
             alpha_dx = np.zeros(system.n_states, dtype=config.np_dtype)
             alpha_dx[0:2] = alpha_dx_tmp[1:3]
             alpha_dx[2] = alpha_dx_tmp[0]

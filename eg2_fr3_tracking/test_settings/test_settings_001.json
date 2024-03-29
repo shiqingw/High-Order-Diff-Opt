@@ -1,0 +1,80 @@
+{   
+    "seed": 0,
+    "image_save_format": "png",
+    "record": 0,
+    "save_screeshot": 0,
+    "save_rgb": 0,
+    "save_depth": 0,
+    "save_detection": 0,
+    "save_scaling_function": 0,
+    "zero_vel": 0,
+    "horizon_length": 3000,
+    "step_every": 8,
+    "save_every": 24,
+    "initial_joint_angles": [0.0, -0.785, 0.0, -2.356, 0.0, 2, 0.785, 0.001, 0.001],
+
+    "joint_limits_config":{
+        "lb":[-2.3093, -1.5133, -2.4937, -2.7478, -2.48, 0.8521, -2.6895, 0, 0],
+        "ub":[2.3093, 1.5133, 2.4937, -0.4461, 2.48, 4.2094, 2.6895, 0.04, 0.04]
+    },
+
+    "input_torque_limits_config":{
+        "lb":[-87, -87, -87, -87, -87, -87, -87, -87, -87],
+        "ub":[87, 87, 87, 87, 87, 87, 87, 87, 87]
+    },
+
+    "simulator_config":{
+        "enable_gui_camera_data": 0,
+        "obs_urdf": "simple_ball.urdf",
+        "cameraDistance": 1.03,
+        "cameraYaw": 90,
+        "cameraPitch":-30,
+        "lookat":[0.39, 0, 0.58],
+        "crude_type": "ellipsoid"
+    },
+
+    "screenshot_config":{
+        "cameraDistance": 0.8,
+        "cameraYaw": 0,
+        "cameraPitch":-30,
+        "lookat":[0.5, 0.0, 0.4],
+        "pixelWidth": 1280,
+        "pixelHeight": 720,
+        "nearPlane": 0.01,
+        "farPlane": 100,
+        "fov": 90
+    },
+
+    "camera_config":{
+        "width": 1280,
+        "height": 720,
+        "near": 0.02,
+        "far": 2.0,
+        "fov": 60,
+        "intrinsic_matrix": [[631.989,0,640.510],[0,631.422,365.195],[0,0,1]]
+    },
+
+    "obstacle_config":{
+        "center": [0.39, -0.40, 0.62],
+        "radius": 0.2
+    },
+
+    "CBF_config":{
+        "active": 1,
+        "selected_bbs": ["HAND_BB", "LINK7_BB", "LINK6_BB", "LINK5_2_BB", "LINK5_1_BB", "LINK4_BB", "LINK3_BB"],
+        "alpha0": 1.3,
+        "gamma1": 10.0,
+        "gamma2": 10.0,
+        "compensation": 0
+    },
+
+    "trajectory_config":{
+        "center": [0.39, 0, 0.58],
+        "radius": 0.1,
+        "angular_velocity": 0.5
+    },
+
+    "controller_config":{
+
+    }
+}
