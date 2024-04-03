@@ -56,53 +56,6 @@ def format_time(seconds):
         f = '0ms'
     return f
 
-def solve_infinite_LQR(A, B, Q, R):
-    '''
-    A, B, Q and R are the matrices defining the OC problem
-    QN is the matrix used for the terminal cost
-    N is the horizon length
-    '''
-    tol = 1e-5
-    P_old = np.zeros(Q.shape)
-    P = np.eye(Q.shape[0])
-    while np.linalg.norm(P - P_old) > tol: 
-        P_old = P
-        T = B.T @ P @ B + R
-        K = - np.linalg.inv(T) @ B.T @ P @ A
-        P = Q + A.T @ P @ A + A.T @ P @ B @ K
-    return K
-
-def solve_LQR_tracking(A_list, B_list, Q_list, R_list, x_bar, N):
-    '''
-    A_list, B_list, Q_list and R_list are the matrices defining the OC problem
-    x_bar is the trajectory of desired states of size dim(x) x (N+1)
-    N is the horizon length
-    
-    The function returns 1) a list of gains of length N and 2) a list of feedforward controls of length N
-    '''
-    Q = Q_list[-1]
-    P = Q
-    q = - Q @ x_bar[-1,:]
-    p = q
-    K_gains = np.empty((N, R_list[0].shape[0], Q_list[0].shape[0]))
-    k_feedforward = np.empty((N, R_list[0].shape[0]))
-    for i in range(N):
-        A = A_list[N-1-i]
-        B = B_list[N-1-i]
-        Q = Q_list[N-1-i]
-        R = R_list[N-1-i]
-
-        T = B.T @ P @ B + R
-        K = - np.linalg.inv(T) @ B.T @ P @ A
-        k = - np.linalg.inv(T) @ B.T @ p
-        q = - Q @ x_bar[N-1-i, :]
-        p = q + A.T @ p + A.T @ P @ B @ k
-        P = Q + A.T @ P @ A + A.T @ P @ B @ K
-        k_feedforward[N-1-i] = k
-        K_gains[N-1-i] = K
-
-    return K_gains, k_feedforward
-
 def points2d_to_ineq(corners):
     """
     corners: np.array of shape (n, 2), arranged in CLOCKWISE order
@@ -118,3 +71,9 @@ def points2d_to_ineq(corners):
     A = A / norm_A[:, None]
     b = b / norm_A
     return A, b
+
+def get_skew_symmetric_matrix(v):
+    """
+    v: np.array of shape (3,)
+    """
+    return np.array([[0, -v[2], v[1]], [v[2], 0, -v[0]], [-v[1], v[0], 0]])

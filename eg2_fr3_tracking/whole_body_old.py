@@ -19,7 +19,6 @@ from cores.utils.utils import seed_everything, save_dict, load_dict
 from cores.utils.proxsuite_utils import init_proxsuite_qp
 import cores_cpp.diffOptCpp as DOC
 from cores.utils.rotation_utils import get_quat_from_rot_matrix, get_Q_matrix_from_quat, get_dQ_matrix
-from cores.utils.control_utils import get_torque_to_track_traj_const_ori
 from cores.configuration.configuration import Configuration
 
 if __name__ == '__main__':
@@ -192,10 +191,22 @@ if __name__ == '__main__':
         v_EE = J_EE @ dq
 
         # Primary obejctive: tracking control
-        Kp = np.diag([10,10,10,10,10,10])
-        Kd = np.diag([10,10,10,10,10,10])
-        R_d = np.diag([1,1,-1])
-        G, u_task = get_torque_to_track_traj_const_ori(traj[i,:], traj_dt[i,:], traj_dtdt[i,:], R_d, Kp, Kd, Minv, J_EE, dJ_EE, dq, P_EE, R_EE)
+        dds = np.zeros(6, dtype=config.np_dtype)
+        dds[:3] = traj_dtdt[i,:]
+
+        ds = np.zeros(6, dtype=config.np_dtype)
+        ds[:3] = traj_dt[i,:] - v_EE[:3]
+        ds[3:] = - v_EE[3:]
+
+        s = np.zeros(6, dtype=config.np_dtype)
+        s[:3] = traj[i,:] - P_EE
+
+        G = J_EE @ Minv
+        # Gpinv = np.linalg.pinv(G)
+        Gpinv = G.T @ np.linalg.pinv(G @ G.T + 0.1* np.eye(G.shape[0]))
+        Kd = np.diag([10., 10., 10., 50., 10., 10.])
+        Kp = np.diag([10., 10., 10., 10., 10., 10.])
+        u_task = dds + Kd @ ds + Kp @ s - dJ_EE @ dq
 
         # Secondary objective: encourage the joints to remain close to the initial configuration
         W = np.diag(1.0/(joint_ub-joint_lb))
@@ -207,7 +218,6 @@ if __name__ == '__main__':
         u_joint = M @ (- Kd @ deq - Kp @ eq) # larger control only for the fingers
 
         # Compute the input torque
-        Gpinv = G.T @ np.linalg.pinv(G @ G.T + 0.1* np.eye(G.shape[0]))
         u_nominal = nle + Gpinv @ u_task + (np.eye(len(q)) - Gpinv @ G) @ u_joint 
 
         time_diff_helper_tmp = 0
