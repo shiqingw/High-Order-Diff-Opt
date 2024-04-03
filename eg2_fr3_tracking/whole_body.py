@@ -192,8 +192,8 @@ if __name__ == '__main__':
         v_EE = J_EE @ dq
 
         # Primary obejctive: tracking control
-        Kp = np.diag([10,10,10,10,10,10])
-        Kd = np.diag([10,10,10,10,10,10])
+        Kp = np.diag([20,20,20,100,100,100])
+        Kd = np.diag([20,20,20,100,100,100])
         R_d = np.diag([1,1,-1])
         G, u_task = get_torque_to_track_traj_const_ori(traj[i,:], traj_dt[i,:], traj_dtdt[i,:], R_d, Kp, Kd, Minv, J_EE, dJ_EE, dq, P_EE, R_EE)
 
@@ -201,13 +201,13 @@ if __name__ == '__main__':
         W = np.diag(1.0/(joint_ub-joint_lb))
         q_bar = np.array(test_settings["initial_joint_angles"], dtype=config.np_dtype)
         eq = W @ (q - q_bar)
-        deq = W @ dq 
-        Kd = np.diag([2., 2., 2., 2., 2., 2., 2., 10., 10.])
-        Kp = np.diag([2., 2., 2., 2., 2., 2., 2., 40., 40.])
+        deq = W @ dq
+        Kp = np.diag([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 50., 50.])
+        Kd = np.diag([0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 10., 10.])
         u_joint = M @ (- Kd @ deq - Kp @ eq) # larger control only for the fingers
 
         # Compute the input torque
-        Gpinv = G.T @ np.linalg.pinv(G @ G.T + 0.1* np.eye(G.shape[0]))
+        Gpinv = G.T @ np.linalg.pinv(G @ G.T + 0.2* np.eye(G.shape[0]))
         u_nominal = nle + Gpinv @ u_task + (np.eye(len(q)) - Gpinv @ G) @ u_joint 
 
         time_diff_helper_tmp = 0
