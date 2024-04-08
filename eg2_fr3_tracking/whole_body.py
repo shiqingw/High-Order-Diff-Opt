@@ -12,6 +12,7 @@ import time
 import sympy as sp
 import pybullet as p
 import pickle
+from PIL import Image
 
 from fr3_envs.fr3_env_cam_collision import FR3CameraSimCollision
 from fr3_envs.bounding_shape_coef import BoundingShapeCoef
@@ -86,6 +87,7 @@ if __name__ == '__main__':
                      target_joint_angles = test_settings["initial_joint_angles"])
     
     # Sreenshot config
+    save_every = test_settings["save_every"]
     cameraDistance = screenshot_config["cameraDistance"]
     cameraYaw = screenshot_config["cameraYaw"]
     cameraPitch = screenshot_config["cameraPitch"]
@@ -308,6 +310,21 @@ if __name__ == '__main__':
         time_diff_helper[i] = time_diff_helper_tmp
         time_cbf_qp[i] = time_cbf_qp_end - time_cbf_qp_start
         time_control_loop[i] = time_control_loop_end - time_control_loop_start
+
+        if test_settings["save_screeshot"] == 1 and i % save_every == 0:
+            screenshot = p.getCameraImage(pixelWidth,
+                                            pixelHeight,
+                                            viewMatrix=viewMatrix,
+                                            projectionMatrix=projectionMatrix,
+                                            flags=p.ER_SEGMENTATION_MASK_OBJECT_AND_LINKINDEX,
+                                            renderer=p.ER_BULLET_HARDWARE_OPENGL
+                                            )
+            screenshot = np.reshape(screenshot[2], (pixelHeight, pixelWidth, 4))
+            screenshot = screenshot.astype(np.uint8)
+            screenshot = Image.fromarray(screenshot)
+            screenshot = screenshot.convert('RGB')
+            screenshot.save(results_dir+'/screenshot_'+'{:04d}.{}'.format(i, test_settings["image_save_format"]))
+
 
     # Save summary
     print("==> Save results")
