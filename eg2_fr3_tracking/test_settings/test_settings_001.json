@@ -59,10 +59,10 @@
     "CBF_config":{
         "active": 1,
         "selected_bbs": ["HAND_BB", "LINK7_BB", "LINK6_BB", "LINK5_2_BB", "LINK5_1_BB", "LINK4_BB", "LINK3_BB"],
-        "alpha0": 1.5,
-        "gamma1": 3.0,
-        "gamma2": 3.0,
-        "compensation": 0
+        "alpha0": [1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3],
+        "gamma1": [10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0],
+        "gamma2": [10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0],
+        "compensation": [1, 1, 1, 1, 1, 1, 1]
     },
 
     "controller_config":{

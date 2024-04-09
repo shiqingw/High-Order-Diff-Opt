@@ -68,9 +68,10 @@ if __name__ == "__main__":
     base_pos = simulator_config["base_pos"]
     base_quat = simulator_config["base_quat"]
     initial_joint_angles = test_settings["initial_joint_angles"]
+    dt = 1.0/240.0
 
     env = FR3MuJocoEnv(xml_name="fr3_on_table_with_bounding_boxes_n_obstacle", base_pos=base_pos, base_quat=base_quat,
-                    cam_distance=cam_distance, cam_azimuth=cam_azimuth, cam_elevation=cam_elevation, cam_lookat=cam_lookat)
+                    cam_distance=cam_distance, cam_azimuth=cam_azimuth, cam_elevation=cam_elevation, cam_lookat=cam_lookat, dt=dt)
     info = env.reset(initial_joint_angles)
     
     # Load the obstacle
@@ -84,13 +85,12 @@ if __name__ == "__main__":
 
     # Load the bounding shape coefficients
     BB_coefs = BoundingShapeCoef()
-
+    
     # Compute desired trajectory
     traj_center = np.array(trajectory_config["center"], dtype=config.np_dtype)
     traj_radius = trajectory_config["radius"]
     traj_angular_velocity = trajectory_config["angular_velocity"]
     horizon = test_settings["horizon_length"]
-    dt = 1.0/240.0
     t = np.linspace(0, horizon*dt, horizon+1)
     traj = np.repeat(traj_center.reshape(1,3), horizon+1, axis=0)
     traj[:,1] += traj_radius * np.cos(traj_angular_velocity*t)
@@ -151,7 +151,7 @@ if __name__ == "__main__":
         P_EE = info["P_EE"]
         R_EE = info["R_EE"]
         J_EE = info["J_EE"]
-        dJ_EE = info["dJ_EE"]
+        dJdq_EE = info["dJdq_EE"]
         v_EE = J_EE @ dq
 
         # Primary obejctive: tracking control
@@ -161,7 +161,7 @@ if __name__ == "__main__":
         R_d = np.array([[1, 0, 0],
                         [0, 1, 0],
                         [0, 0, -1]], dtype=config.np_dtype)
-        S, u_task = get_torque_to_track_traj_const_ori(traj[i,:], traj_dt[i,:], traj_dtdt[i,:], R_d, Kp, Kd, Minv, J_EE, dJ_EE, dq, P_EE, R_EE)
+        S, u_task = get_torque_to_track_traj_const_ori(traj[i,:], traj_dt[i,:], traj_dtdt[i,:], R_d, Kp, Kd, Minv, J_EE, dJdq_EE, dq, P_EE, R_EE)
 
         # Secondary objective: encourage the joints to remain close to the initial configuration
         W = np.diag(1.0/(joint_ub-joint_lb))
@@ -193,7 +193,7 @@ if __name__ == "__main__":
                 P_BB = info["P_"+name_BB]
                 R_BB = info["R_"+name_BB]
                 J_BB = info["J_"+name_BB]
-                dJ_BB = info["dJ_"+name_BB]
+                dJdq_BB = info["dJdq_"+name_BB]
                 v_BB = J_BB @ dq
                 D_BB = BB_coefs.coefs[name_BB]
                 quat_BB = get_quat_from_rot_matrix(R_BB)
@@ -221,8 +221,8 @@ if __name__ == "__main__":
                 dquat = 0.5 * Q @ v_BB[3:6] # shape (4,)
                 dx[3:7] = dquat 
                 dCBF =  alpha_dx @ dx # scalar
-                CBF = alpha - alpha0
-                phi1 = dCBF + gamma1 * CBF
+                CBF = alpha - alpha0[kk]
+                phi1 = dCBF + gamma1[kk] * CBF
 
                 dQ = get_dQ_matrix(dquat) # shape (4,3)
                 tmp_vec = np.zeros(7, dtype=config.np_dtype)
@@ -232,8 +232,8 @@ if __name__ == "__main__":
                 tmp_mat[3:7,3:6] = 0.5 * Q
 
                 C[kk,:] = alpha_dx @ tmp_mat @ J_BB @ Minv
-                lb[kk] = - gamma2*phi1 - gamma1*dCBF - dx.T @ alpha_dxdx @ dx - alpha_dx @ tmp_vec \
-                        - alpha_dx @ tmp_mat @ dJ_BB @ dq + alpha_dx @ tmp_mat @ J_BB @ Minv @ nle + compensation
+                lb[kk] = - gamma2[kk]*phi1 - gamma1[kk]*dCBF - dx.T @ alpha_dxdx @ dx - alpha_dx @ tmp_vec \
+                        - alpha_dx @ tmp_mat @ dJdq_BB + alpha_dx @ tmp_mat @ J_BB @ Minv @ nle + compensation[kk]
                 ub[kk] = np.inf
 
                 CBF_tmp[kk] = CBF
@@ -326,6 +326,8 @@ if __name__ == "__main__":
         plt.plot(times, desired_controls[:,i], color="tab:blue", linestyle=":", 
                 label="u_{:d} nominal".format(i+1))
         plt.plot(times, controls[:,i], color="tab:blue", linestyle="-", label="u_{:d}".format(i+1))
+        plt.axhline(y = input_torque_lb[i], color = 'black', linestyle = 'dotted', linewidth = 2)
+        plt.axhline(y = input_torque_ub[i], color = 'black', linestyle = 'dotted', linewidth = 2)
         plt.legend()
         plt.tight_layout()
         plt.savefig(os.path.join(results_dir, 'plot_controls_{:d}.pdf'.format(i+1)))

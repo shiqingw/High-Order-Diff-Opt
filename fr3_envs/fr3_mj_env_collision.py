@@ -15,12 +15,14 @@ from pathlib import Path
 
 class FR3MuJocoEnv:
     def __init__(self, render=True, xml_name="fr3", urdf_name="fr3_with_camera_and_bounding_boxes", base_pos=[0,0,0], base_quat=[0,0,0,1],
-                 cam_distance=3.0, cam_azimuth=-90, cam_elevation=-45, cam_lookat=[0.0, -0.25, 0.824]):
+                 cam_distance=3.0, cam_azimuth=-90, cam_elevation=-45, cam_lookat=[0.0, -0.25, 0.824], dt=1.0/240):
         package_directory = str(Path(__file__).parent.parent)
 
-        self.model = mujoco.MjModel.from_xml_path(
-            package_directory + f"/robots_mj/{xml_name}.xml"
-        )
+        self.model = mujoco.MjModel.from_xml_path(package_directory + f"/robots_mj/{xml_name}.xml")
+
+        # Override the simulation timestep.
+        self.model.opt.timestep = dt
+
         self.data = mujoco.MjData(self.model)
 
         robot_URDF = package_directory + "/robots_mj/{}.urdf".format(urdf_name)
@@ -149,7 +151,7 @@ class FR3MuJocoEnv:
             )
 
             # Advanced calculation
-            info[f"dJ_{frame_name}"] = pin.getFrameJacobianTimeVariation(
+            info[f"dJdq_{frame_name}"] = pin.getFrameClassicalAcceleration(
                 self.pin_robot.model, self.pin_robot.data, frame_id, self.jacobian_frame
             )
 

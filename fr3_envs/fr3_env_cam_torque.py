@@ -184,7 +184,7 @@ class FR3CameraSim(Env):
             )
 
             # Advanced calculation
-            info[f"dJ_{frame_name}"] = pin.getFrameJacobianTimeVariation(
+            info[f"dJdq_{frame_name}"] = pin.getFrameClassicalAcceleration(
                 self.robot.model, self.robot.data, frame_id, self.jacobian_frame
             )
 

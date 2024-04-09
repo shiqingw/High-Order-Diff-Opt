@@ -30,7 +30,7 @@ if __name__ == '__main__':
 
     # Create result directory
     exp_num = args.exp_num
-    results_dir = "{}/eg2_results/{:03d}".format(str(Path(__file__).parent.parent), exp_num)
+    results_dir = "{}/eg2_results_pybullet/{:03d}".format(str(Path(__file__).parent.parent), exp_num)
     test_settings_path = "{}/test_settings/test_settings_{:03d}.json".format(str(Path(__file__).parent), exp_num)
     if not os.path.exists(results_dir):
         os.mkdir(results_dir)
@@ -190,14 +190,14 @@ if __name__ == '__main__':
         P_EE = info["P_EE"]
         R_EE = info["R_EE"]
         J_EE = info["J_EE"]
-        dJ_EE = info["dJ_EE"]
+        dJdq_EE = info["dJdq_EE"]
         v_EE = J_EE @ dq
 
         # Primary obejctive: tracking control
         Kp = np.diag([20,20,20,100,100,100])
         Kd = np.diag([20,20,20,100,100,100])
         R_d = np.diag([1,1,-1])
-        G, u_task = get_torque_to_track_traj_const_ori(traj[i,:], traj_dt[i,:], traj_dtdt[i,:], R_d, Kp, Kd, Minv, J_EE, dJ_EE, dq, P_EE, R_EE)
+        G, u_task = get_torque_to_track_traj_const_ori(traj[i,:], traj_dt[i,:], traj_dtdt[i,:], R_d, Kp, Kd, Minv, J_EE, dJdq_EE, dq, P_EE, R_EE)
 
         # Secondary objective: encourage the joints to remain close to the initial configuration
         W = np.diag(1.0/(joint_ub-joint_lb))
@@ -227,7 +227,7 @@ if __name__ == '__main__':
                 P_BB = info["P_"+name_BB]
                 R_BB = info["R_"+name_BB]
                 J_BB = info["J_"+name_BB]
-                dJ_BB = info["dJ_"+name_BB]
+                dJdq_BB = info["dJdq_"+name_BB]
                 v_BB = J_BB @ dq
                 D_BB = BB_coefs.coefs[name_BB]
                 quat_BB = get_quat_from_rot_matrix(R_BB)
@@ -255,8 +255,8 @@ if __name__ == '__main__':
                 dquat = 0.5 * Q @ v_BB[3:6] # shape (4,)
                 dx[3:7] = dquat 
                 dCBF =  alpha_dx @ dx # scalar
-                CBF = alpha - alpha0
-                phi1 = dCBF + gamma1 * CBF
+                CBF = alpha - alpha0[kk]
+                phi1 = dCBF + gamma1[kk] * CBF
 
                 dQ = get_dQ_matrix(dquat) # shape (4,3)
                 tmp_vec = np.zeros(7, dtype=config.np_dtype)
@@ -266,8 +266,8 @@ if __name__ == '__main__':
                 tmp_mat[3:7,3:6] = 0.5 * Q
 
                 C[kk,:] = alpha_dx @ tmp_mat @ J_BB @ Minv
-                lb[kk] = - gamma2*phi1 - gamma1*dCBF - dx.T @ alpha_dxdx @ dx - alpha_dx @ tmp_vec \
-                        - alpha_dx @ tmp_mat @ dJ_BB @ dq + alpha_dx @ tmp_mat @ J_BB @ Minv @ nle + compensation
+                lb[kk] = - gamma2[kk]*phi1 - gamma1[kk]*dCBF - dx.T @ alpha_dxdx @ dx - alpha_dx @ tmp_vec \
+                        - alpha_dx @ tmp_mat @ dJdq_BB + alpha_dx @ tmp_mat @ J_BB @ Minv @ nle + compensation[kk]
                 ub[kk] = np.inf
 
                 CBF_tmp[kk] = CBF

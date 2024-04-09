@@ -52,7 +52,7 @@ def solve_LQR_tracking(A_list, B_list, Q_list, R_list, x_bar, N):
 
     return K_gains, k_feedforward
 
-def get_torque_to_track_traj_const_ori(p_d, p_d_dt, p_d_dtdt, R_d, Kp, Kd, Minv, J, dJ, dq, p, R):
+def get_torque_to_track_traj_const_ori(p_d, p_d_dt, p_d_dtdt, R_d, Kp, Kd, Minv, J, dJdq, dq, p, R):
     """
     p_d: desired position, shape (3,)
     p_d_dt: desired translation velocity, shape (3,)
@@ -62,7 +62,7 @@ def get_torque_to_track_traj_const_ori(p_d, p_d_dt, p_d_dtdt, R_d, Kp, Kd, Minv,
     Kd: derivative gain, shape (6,6)
     Minv: inverse of mass matrix, shape (n_joints,n_joints)
     J: Jacobian, shape (6,n_joints)
-    dJ: Jacobian derivative, shape (6,n_joints)
+    dJdq: dJdq, shape (6,)
     dq: current joint velocities, shape (n_joints,)
     p: current position, shape (3,)
     R: current orientation, shape (3,3)
@@ -111,7 +111,7 @@ def get_torque_to_track_traj_const_ori(p_d, p_d_dt, p_d_dtdt, R_d, Kp, Kd, Minv,
     D[3:,3:] = - 0.5 * np.outer(qv_d, qv) - 0.5 * (qw_d * I_3 + S_qv_d) @ (qw * I_3 - S_qv)
 
     G = D @ J @ Minv # shape (6,n_joints)
-    u_task = -feed_forward - Kp @ e - Kd @ e_dt - D @ dJ @ dq
+    u_task = -feed_forward - Kp @ e - Kd @ e_dt - D @ dJdq
 
     return G, u_task
 
