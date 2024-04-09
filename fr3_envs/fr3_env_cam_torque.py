@@ -70,8 +70,6 @@ class FR3CameraSim(Env):
         # Enable joint force/torque sensor
         for i in self.active_joint_ids:
             p.enableJointForceTorqueSensor(self.robotID, i, enableSensor=True)
-            # print(p.getJointInfo(self.robotID, i))
-        # assert False
 
         # Get frame ID for world
         self.jacobian_frame = pin.ReferenceFrame.LOCAL_WORLD_ALIGNED
