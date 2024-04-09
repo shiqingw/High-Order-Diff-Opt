@@ -7,13 +7,15 @@ import mujoco.viewer
 import numpy as np
 import pinocchio as pin
 from pinocchio.robot_wrapper import RobotWrapper
+from scipy.spatial.transform import Rotation
 
 import os
 from pathlib import Path
 
 
 class FR3MuJocoEnv:
-    def __init__(self, render=True, xml_name="fr3", urdf_name="fr3_with_camera_and_bounding_boxes"):
+    def __init__(self, render=True, xml_name="fr3", urdf_name="fr3_with_camera_and_bounding_boxes", base_pos=[0,0,0], base_quat=[0,0,0,1],
+                 cam_distance=3.0, cam_azimuth=-90, cam_elevation=-45, cam_lookat=[0.0, -0.25, 0.824]):
         package_directory = str(Path(__file__).parent.parent)
 
         self.model = mujoco.MjModel.from_xml_path(
@@ -27,10 +29,10 @@ class FR3MuJocoEnv:
         if render:
             self.viewer = mujoco.viewer.launch_passive(self.model, self.data)
             self.render = True
-            self.viewer.cam.distance = 3.0
-            self.viewer.cam.azimuth = 90
-            self.viewer.cam.elevation = -45
-            self.viewer.cam.lookat[:] = np.array([0.0, -0.25, 0.824])
+            self.viewer.cam.distance = cam_distance
+            self.viewer.cam.azimuth = cam_azimuth
+            self.viewer.cam.elevation = cam_elevation
+            self.viewer.cam.lookat[:] = np.array(cam_lookat)
         else:
             self.render = False
 
@@ -38,8 +40,8 @@ class FR3MuJocoEnv:
         self.renderer = None
 
         # Define base position and orientation
-        self.base_p_offset = np.array([0.0, 0.0, 0.0]).reshape(-1,1)
-        self.base_R_offset = np.eye(3)
+        self.base_p_offset = np.array(base_pos).reshape(-1,1)
+        self.base_R_offset = Rotation.from_quat(base_quat).as_matrix()
 
         # Get frame ID for world
         self.jacobian_frame = pin.ReferenceFrame.LOCAL_WORLD_ALIGNED
