@@ -385,8 +385,8 @@
   <link name="fr3_link8">
     <inertial>
         <origin rpy="0 0 0" xyz="0 0 0"/>
-        <mass value="1e-5"/>
-        <inertia ixx="1e-6" ixy="0" ixz="0" iyy="1e-6" iyz="0" izz="1e-6"/>
+        <mass value="1e-10"/>
+        <inertia ixx="1e-10" ixy="0" ixz="0" iyy="1e-10" iyz="0" izz="1e-10"/>
     </inertial>
   </link>
   
@@ -427,8 +427,8 @@
   <link name="fr3_hand_tcp">
     <inertial>
         <origin rpy="0 0 0" xyz="0 0 0"/>
-        <mass value="1e-5"/>
-        <inertia ixx="1e-6" ixy="0" ixz="0" iyy="1e-6" iyz="0" izz="1e-6"/>
+        <mass value="1e-10"/>
+        <inertia ixx="1e-10" ixy="0" ixz="0" iyy="1e-10" iyz="0" izz="1e-10"/>
     </inertial>
   </link>
 
@@ -457,6 +457,7 @@
 
   <joint name="fr3_hand_bounding_box_joint" type="fixed">
     <origin rpy="0 0 0" xyz="0 0.00 0.025"/>
+    <!-- <origin rpy="0 0 0" xyz="0 0.00 0.02"/> -->
     <parent link="fr3_hand"/>
     <child link="fr3_hand_bounding_box"/>
   </joint>
@@ -572,8 +573,8 @@
   <link name="fr3_camera">
     <inertial>
         <origin rpy="0 0 0" xyz="0 0 0"/>
-        <mass value="0.072"/>
-        <inertia ixx="5.235e-5" ixy="0" ixz="0" iyy="5.235e-5" iyz="0" izz="7.5e-6"/>
+        <mass value="1e-10"/>
+        <inertia ixx="1e-10" ixy="0" ixz="0" iyy="1e-10" iyz="0" izz="1e-10"/>
     </inertial>
     <visual>
       <origin rpy="0 0 0" xyz="0 0 -0.01"/>

@@ -81,13 +81,9 @@ class FR3MuJocoEnv:
         }
         
 
-    def reset(self):
-        self.q_nominal = np.array(
-            [0.0, -0.785398163, 0.0, -2.35619449, 0.0, 1.57079632679, 0.785398163397]
-        )
-
+    def reset(self, q_nominal):
         for i in range(7):
-            self.data.qpos[i] = self.q_nominal[i]
+            self.data.qpos[i] = q_nominal[i]
 
         self.data.qpos[7] = 0.0
         self.data.qpos[8] = 0.0

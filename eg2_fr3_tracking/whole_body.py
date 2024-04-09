@@ -7,23 +7,21 @@ import numpy as np
 from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 import matplotlib.pyplot as plt
-import cvxpy as cp
+import matplotlib
+matplotlib.use('Agg')  # Set the backend to 'Agg'
 import time
-import sympy as sp
-import pybullet as p
-import pickle
-from PIL import Image
 
-from fr3_envs.fr3_env_cam_collision import FR3CameraSimCollision
-from fr3_envs.bounding_shape_coef import BoundingShapeCoef
-from cores.utils.utils import seed_everything, save_dict, load_dict
+from fr3_envs.fr3_mj_env_collision import FR3MuJocoEnv
+from fr3_envs.bounding_shape_coef_mj import BoundingShapeCoef
+from cores.utils.utils import seed_everything, save_dict
 from cores.utils.proxsuite_utils import init_proxsuite_qp
 import cores_cpp.diffOptCpp as DOC
 from cores.utils.rotation_utils import get_quat_from_rot_matrix, get_Q_matrix_from_quat, get_dQ_matrix
 from cores.utils.control_utils import get_torque_to_track_traj_const_ori
 from cores.configuration.configuration import Configuration
+from scipy.spatial.transform import Rotation
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--exp_num', default=1, type=int, help='test case number')
     args = parser.parse_args()
@@ -48,10 +46,8 @@ if __name__ == '__main__':
 
     # Various configs
     simulator_config = test_settings["simulator_config"]
-    screenshot_config = test_settings["screenshot_config"]
     controller_config = test_settings["controller_config"]
     CBF_config = test_settings["CBF_config"]
-    camera_config = test_settings["camera_config"]
     trajectory_config = test_settings["trajectory_config"]
 
     # Joint limits
@@ -65,70 +61,34 @@ if __name__ == '__main__':
     input_torque_ub = np.array(input_torque_limits_config["ub"], dtype=config.np_dtype)
 
     # Create and reset simulation
-    enable_gui_camera_data = simulator_config["enable_gui_camera_data"]
-    obs_urdf = simulator_config["obs_urdf"]
-    cameraDistance = simulator_config["cameraDistance"]
-    cameraYaw = simulator_config["cameraYaw"]
-    cameraPitch = simulator_config["cameraPitch"]
-    lookat = simulator_config["lookat"]
-    crude_type = simulator_config["crude_type"]
+    cam_distance = simulator_config["cam_distance"]
+    cam_azimuth = simulator_config["cam_azimuth"]
+    cam_elevation = simulator_config["cam_elevation"]
+    cam_lookat = simulator_config["cam_lookat"]
+    base_pos = simulator_config["base_pos"]
+    base_quat = simulator_config["base_quat"]
+    initial_joint_angles = test_settings["initial_joint_angles"]
 
-    if test_settings["record"] == 1:
-        env = FR3CameraSimCollision(camera_config, enable_gui_camera_data, render_mode="human",
-                                     record_path=os.path.join(results_dir, 'record.mp4'), crude_type=crude_type)
-    else:
-        env = FR3CameraSimCollision(camera_config, enable_gui_camera_data, render_mode="human",
-                                     record_path=None, crude_type=crude_type)
+    env = FR3MuJocoEnv(xml_name="fr3_on_table_with_bounding_boxes_n_obstacle", base_pos=base_pos, base_quat=base_quat,
+                    cam_distance=cam_distance, cam_azimuth=cam_azimuth, cam_elevation=cam_elevation, cam_lookat=cam_lookat)
+    info = env.reset(initial_joint_angles)
     
-    info = env.reset(cameraDistance = cameraDistance,
-                     cameraYaw = cameraYaw,
-                     cameraPitch = cameraPitch,
-                     lookat = lookat,
-                     target_joint_angles = test_settings["initial_joint_angles"])
-    
-    # Sreenshot config
-    save_every = test_settings["save_every"]
-    cameraDistance = screenshot_config["cameraDistance"]
-    cameraYaw = screenshot_config["cameraYaw"]
-    cameraPitch = screenshot_config["cameraPitch"]
-    lookat = screenshot_config["lookat"]
-    pixelWidth = screenshot_config["pixelWidth"]
-    pixelHeight = screenshot_config["pixelHeight"]
-    nearPlane = screenshot_config["nearPlane"]
-    farPlane = screenshot_config["farPlane"]
-    fov = screenshot_config["fov"]
-    viewMatrix = p.computeViewMatrixFromYawPitchRoll(cameraTargetPosition=lookat,
-                                                     distance=cameraDistance, 
-                                                     yaw=cameraYaw, 
-                                                     pitch=cameraPitch,
-                                                     roll = 0,
-                                                     upAxisIndex = 2)
-    projectionMatrix = p.computeProjectionMatrixFOV(fov, pixelWidth / pixelHeight, nearPlane, farPlane)
-
     # Load the obstacle
     obstacle_config = test_settings["obstacle_config"]
-    obs_pos_np = np.array(obstacle_config["center"], dtype=config.np_dtype)
-    obs_quat_np = np.array([0, 0, 0, 1], dtype=config.np_dtype) # (x, y, z, w)
-    obs_radius_np = obstacle_config["radius"]
-    obs_coef_np = np.eye(3)/obs_radius_np**2
-    obs_id = p.loadURDF(obs_urdf, obs_pos_np, obs_quat_np, useFixedBase=True)
+    obs_pos_np = np.array(obstacle_config["pos"], dtype=config.np_dtype)
+    obs_quat_np = np.array(obstacle_config["quat"], dtype=config.np_dtype) # (x, y, z, w)
+    obs_size_np = np.array(obstacle_config["size"])
+    obs_coef_np = np.diag(1/obs_size_np**2)
+    obs_R_np = Rotation.from_quat(obs_quat_np).as_matrix()
+    obs_coef_np = obs_R_np @ obs_coef_np @ obs_R_np.T
 
     # Load the bounding shape coefficients
     BB_coefs = BoundingShapeCoef()
 
-    # Visualize desired trajectory
+    # Compute desired trajectory
     traj_center = np.array(trajectory_config["center"], dtype=config.np_dtype)
     traj_radius = trajectory_config["radius"]
     traj_angular_velocity = trajectory_config["angular_velocity"]
-    N = 100
-    theta = np.linspace(0, 2*np.pi, N)
-    circle = np.zeros((N, 3), dtype=config.np_dtype)
-    circle[:,0] = traj_center[0]
-    circle[:,1] = traj_center[1] + traj_radius * np.cos(theta)
-    circle[:,2] = traj_center[2] + traj_radius * np.sin(theta)
-    p.addUserDebugPoints(circle, [[1, 0, 0]]*N, 4, 0)
-
-    # Compute desired trajectory
     horizon = test_settings["horizon_length"]
     dt = 1.0/240.0
     t = np.linspace(0, horizon*dt, horizon+1)
@@ -162,7 +122,7 @@ if __name__ == '__main__':
     print("==> Create records")
     times = np.linspace(0, (horizon-1)*dt, horizon)
     joint_angles = np.zeros([horizon, n_controls], dtype=config.np_dtype)
-    controls = np.zeros([horizon, n_controls], dtype=config.np_dtype)
+    controls = np.zeros([horizon, 7], dtype=config.np_dtype)
     desired_controls = np.zeros([horizon, n_controls], dtype=config.np_dtype)
     phi1s = np.zeros([horizon, n_CBF], dtype=config.np_dtype)
     phi2s = np.zeros([horizon, n_CBF], dtype=config.np_dtype)
@@ -186,6 +146,7 @@ if __name__ == '__main__':
         nle = info["nle"]
         Minv = info["Minv"]
         M = info["M"]
+        G = info["G"]
 
         P_EE = info["P_EE"]
         R_EE = info["R_EE"]
@@ -196,8 +157,11 @@ if __name__ == '__main__':
         # Primary obejctive: tracking control
         Kp = np.diag([20,20,20,100,100,100])
         Kd = np.diag([20,20,20,100,100,100])
-        R_d = np.diag([1,1,-1])
-        G, u_task = get_torque_to_track_traj_const_ori(traj[i,:], traj_dt[i,:], traj_dtdt[i,:], R_d, Kp, Kd, Minv, J_EE, dJ_EE, dq, P_EE, R_EE)
+        
+        R_d = np.array([[1, 0, 0],
+                        [0, 1, 0],
+                        [0, 0, -1]], dtype=config.np_dtype)
+        S, u_task = get_torque_to_track_traj_const_ori(traj[i,:], traj_dt[i,:], traj_dtdt[i,:], R_d, Kp, Kd, Minv, J_EE, dJ_EE, dq, P_EE, R_EE)
 
         # Secondary objective: encourage the joints to remain close to the initial configuration
         W = np.diag(1.0/(joint_ub-joint_lb))
@@ -209,8 +173,10 @@ if __name__ == '__main__':
         u_joint = M @ (- Kd @ deq - Kp @ eq) # larger control only for the fingers
 
         # Compute the input torque
-        Gpinv = G.T @ np.linalg.pinv(G @ G.T + 0.2* np.eye(G.shape[0]))
-        u_nominal = nle + Gpinv @ u_task + (np.eye(len(q)) - Gpinv @ G) @ u_joint 
+        Spinv = S.T @ np.linalg.pinv(S @ S.T + 0.01* np.eye(S.shape[0]))
+        # Spinv = np.linalg.pinv(S)
+        u_nominal = nle + Spinv @ u_task + (np.eye(len(q)) - Spinv @ S) @ u_joint 
+        # u_nominal = nle + Spinv @ u_task 
 
         time_diff_helper_tmp = 0
         if CBF_config["active"]:
@@ -297,7 +263,9 @@ if __name__ == '__main__':
             phi2_tmp = np.zeros(n_CBF, dtype=config.np_dtype)
 
         # Step the environment
-        info = env.step(action=u, return_image=False)
+        u = u[:7]
+        finger_pos = 0
+        info = env.step(tau=u, finger_pos=finger_pos)
         time.sleep(max(0,dt-time_control_loop_end+time_control_loop_start))
 
         # Record
@@ -311,20 +279,8 @@ if __name__ == '__main__':
         time_cbf_qp[i] = time_cbf_qp_end - time_cbf_qp_start
         time_control_loop[i] = time_control_loop_end - time_control_loop_start
 
-        if test_settings["save_screeshot"] == 1 and i % save_every == 0:
-            screenshot = p.getCameraImage(pixelWidth,
-                                            pixelHeight,
-                                            viewMatrix=viewMatrix,
-                                            projectionMatrix=projectionMatrix,
-                                            flags=p.ER_SEGMENTATION_MASK_OBJECT_AND_LINKINDEX,
-                                            renderer=p.ER_BULLET_HARDWARE_OPENGL
-                                            )
-            screenshot = np.reshape(screenshot[2], (pixelHeight, pixelWidth, 4))
-            screenshot = screenshot.astype(np.uint8)
-            screenshot = Image.fromarray(screenshot)
-            screenshot = screenshot.convert('RGB')
-            screenshot.save(results_dir+'/screenshot_'+'{:04d}.{}'.format(i, test_settings["image_save_format"]))
-
+    # Close the environment
+    env.close()
 
     # Save summary
     print("==> Save results")
@@ -339,6 +295,9 @@ if __name__ == '__main__':
                "time_diff_helper": time_diff_helper,
                "time_cbf_qp": time_cbf_qp}
     save_dict(summary, os.path.join(results_dir, 'summary.pkl'))
+
+    print("==> Save all_info")
+    save_dict(all_info, os.path.join(results_dir, 'all_info.pkl'))
     
     # Visualization
     print("==> Draw plots")
@@ -362,7 +321,7 @@ if __name__ == '__main__':
     plt.savefig(os.path.join(results_dir, 'plot_joint_angles.pdf'))
     plt.close(fig)
 
-    for i in range(n_controls):
+    for i in range(7):
         fig, ax = plt.subplots(figsize=(10,8), dpi=config.dpi, frameon=True)
         plt.plot(times, desired_controls[:,i], color="tab:blue", linestyle=":", 
                 label="u_{:d} nominal".format(i+1))
@@ -417,9 +376,4 @@ if __name__ == '__main__':
     print("==> Diff helper solving time: {:.5f} s".format(np.mean(time_diff_helper)))
     print("==> CBF-QP solving time: {:.5f} s".format(np.mean(time_cbf_qp)))
 
-
-    with open(os.path.join("/Users/shiqing/Desktop/Generalized-Diff-Opt", 'all_info.pkl'), 'wb') as f:
-        pickle.dump(all_info, f)
-    print("==> all_info saved")
     print("==> Done!")
-

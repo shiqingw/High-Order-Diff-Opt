@@ -1,7 +1,7 @@
 <mujoco model="fr3_on_table_with_bounding_boxes_body">
     <geom name="floor" size="0 0 0.05" type="plane" material="groundplane"/>
     
-    <body name="link0" childclass="fr3" pos="0.0 -0.25 0.824" quat="0.7071 0 0 0.7071">
+    <body name="link0" childclass="fr3" pos="-0.25 0.0 0.824" quat="1 0 0 0">
         <inertial mass="0.629769" pos="-0.041018 -0.00014 0.049974"
         fullinertia="0.00315 0.00388 0.004285 8.2904e-7 0.00015 8.2299e-6"/>
         

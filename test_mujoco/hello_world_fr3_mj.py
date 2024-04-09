@@ -9,7 +9,7 @@ from fr3_envs.fr3_mj_env_collision import FR3MuJocoEnv
 
 def main():
     env = FR3MuJocoEnv(xml_name="fr3_on_table_with_bounding_boxes_n_obstacle")
-    info = env.reset()
+    info = env.reset([0.0, -0.785, 0.0, -2.356, 0.0, 2, 0.785, 0.001, 0.001])
 
     target = np.array(
         [0, -0.785398163, 0.0, -2.35619449, 0.0, 1.57079632679, 0.785398163397]
@@ -19,7 +19,7 @@ def main():
     # Close the viewer automatically after 30 wall-seconds.
     start = time.time()
 
-    while env.viewer.is_running() and time.time() - start < 300:
+    while env.viewer.is_running() and time.time() - start < 30:
         step_start = time.time()
 
         error = target - info["q"][:7]

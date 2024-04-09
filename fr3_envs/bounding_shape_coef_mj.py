@@ -35,6 +35,10 @@ class BoundingShapeCoef(object):
         self.coefs["HAND_BB"] = np.array([[1/(0.07*0.07), 0.0, 0.0],
                                              [0.0, 1/(0.12*0.12), 0.0],
                                              [0.0, 0.0, 1/(0.10*0.10)]], dtype=config.np_dtype)
+        
+        # self.coefs["HAND_BB"] = np.array([[1/(0.12*0.12), 0.0, 0.0],
+        #                                      [0.0, 1/(0.12*0.12), 0.0],
+        #                                      [0.0, 0.0, 1/(0.12*0.12)]], dtype=config.np_dtype)
 
         self.coefs_sqrt = {}
         self.coefs_sqrt["LINK3_BB"] = np.array([[1/0.09, 0.0, 0.0],
@@ -64,4 +68,8 @@ class BoundingShapeCoef(object):
         self.coefs_sqrt["HAND_BB"] = np.array([[1/0.07, 0.0, 0.0],
                                              [0.0, 1/0.12, 0.0],
                                              [0.0, 0.0, 1/0.10]], dtype=config.np_dtype)
+        
+        # self.coefs_sqrt["HAND_BB"] = np.array([[1/0.12, 0.0, 0.0],
+        #                                      [0.0, 1/0.12, 0.0],
+        #                                      [0.0, 0.0, 1/0.12]], dtype=config.np_dtype)
         
