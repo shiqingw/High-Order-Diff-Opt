@@ -163,6 +163,11 @@ class FR3MuJocoEnv:
         Minv_mj = np.zeros_like(Minv)
         mujoco.mj_solveM(self.model, self.data, Minv_mj, np.eye(Minv_mj.shape[0]))
         info["Minv_mj"] = Minv_mj
+        info["nle_mj"] = self.data.qfrc_bias
+
+        M_mj = np.zeros_like(M)
+        mujoco.mj_fullM(self.model, M_mj, self.data.qM)
+        info["M_mj"] = M_mj    
 
         return info
 

@@ -145,12 +145,12 @@ if __name__ == "__main__":
         dq = info["dq"]
         nle = info["nle"]
         Minv = info["Minv"]
-        Minv_mj = info["Minv_mj"]
         M = info["M"]
         G = info["G"]
-        # print(Minv_mj)
-        # print(Minv)
-        # print("###############")
+
+        Minv_mj = info["Minv_mj"]
+        M_mj = info["M_mj"]
+        nle_mj = info["nle_mj"]
 
         P_EE = info["P_EE"]
         R_EE = info["R_EE"]
@@ -165,7 +165,7 @@ if __name__ == "__main__":
         R_d = np.array([[1, 0, 0],
                         [0, 1, 0],
                         [0, 0, -1]], dtype=config.np_dtype)
-        S, u_task = get_torque_to_track_traj_const_ori(traj[i,:], traj_dt[i,:], traj_dtdt[i,:], R_d, Kp, Kd, Minv, J_EE, dJdq_EE, dq, P_EE, R_EE)
+        S, u_task = get_torque_to_track_traj_const_ori(traj[i,:], traj_dt[i,:], traj_dtdt[i,:], R_d, Kp, Kd, Minv_mj, J_EE, dJdq_EE, dq, P_EE, R_EE)
 
         # Secondary objective: encourage the joints to remain close to the initial configuration
         W = np.diag(1.0/(joint_ub-joint_lb))
@@ -174,12 +174,11 @@ if __name__ == "__main__":
         deq = W @ dq
         Kp = np.diag([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 50., 50.])
         Kd = np.diag([0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 10., 10.])
-        u_joint = M @ (- Kd @ deq - Kp @ eq) # larger control only for the fingers
+        u_joint = M_mj @ (- Kd @ deq - Kp @ eq) # larger control only for the fingers
 
         # Compute the input torque
         Spinv = S.T @ np.linalg.pinv(S @ S.T + 0.01* np.eye(S.shape[0]))
-        # Spinv = np.linalg.pinv(S)
-        u_nominal = nle + Spinv @ u_task + (np.eye(len(q)) - Spinv @ S) @ u_joint 
+        u_nominal = nle_mj + Spinv @ u_task + (np.eye(len(q)) - Spinv @ S) @ u_joint 
         # u_nominal = nle + Spinv @ u_task 
 
         time_diff_helper_tmp = 0
@@ -237,7 +236,7 @@ if __name__ == "__main__":
 
                 C[kk,:] = alpha_dx @ tmp_mat @ J_BB @ Minv_mj
                 lb[kk] = - gamma2[kk]*phi1 - gamma1[kk]*dCBF - dx.T @ alpha_dxdx @ dx - alpha_dx @ tmp_vec \
-                        - alpha_dx @ tmp_mat @ dJdq_BB + alpha_dx @ tmp_mat @ J_BB @ Minv_mj @ nle + compensation[kk]
+                        - alpha_dx @ tmp_mat @ dJdq_BB + alpha_dx @ tmp_mat @ J_BB @ Minv_mj @ nle_mj + compensation[kk]
                 ub[kk] = np.inf
 
                 CBF_tmp[kk] = CBF
