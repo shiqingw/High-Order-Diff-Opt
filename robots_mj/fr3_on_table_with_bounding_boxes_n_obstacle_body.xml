@@ -25,14 +25,14 @@
             <geom material="white" mesh="link1" class="visual"/>
             <geom mesh="link1_c" class="collision"/>
 
-            <body name="link2" quat="1 -1 0 0">
+            <body name="link2" quat="0.7071067811865476 -0.7071067811865475 0.0 0.0">
                 <inertial mass="0.646926" pos="-0.003141 -0.02872 0.003495"
                 fullinertia="0.0079620 2.8110e-2 2.5995e-2 -3.925e-3 1.0254e-2 7.04e-4"/>
                 <joint name="joint2" range="-1.5133 1.5133"/>
                 <geom material="white" mesh="link2" class="visual"/>
                 <geom mesh="link2_c" class="collision"/>
 
-                <body name="link3" pos="0 -0.316 0" quat="1 1 0 0">
+                <body name="link3" pos="0 -0.316 0" quat="0.7071067811865476 0.7071067811865475 0.0 0.0">
                     <joint name="joint3" range="-2.4937 2.4937"/>
                     <inertial mass="3.228604" pos="2.7518e-2 3.9252e-2 -6.6502e-2"
                         fullinertia="3.7242e-2 3.6155e-2 1.083e-2 -4.761e-3 -1.1396e-2 -1.2805e-2"/>
@@ -43,7 +43,7 @@
                     <geom mesh="link3_c" class="collision"/>
                     <geom type="ellipsoid" size="0.09 0.09 0.165" pos="0 0 -0.145" contype="0" conaffinity="0" group="2" rgba="0.3921 0.5843 0.9294 0.5"/>
 
-                    <body name="link4" pos="0.0825 0 0" quat="1 1 0 0">
+                    <body name="link4" pos="0.0825 0 0" quat="0.7071067811865476 0.7071067811865475 0.0 0.0">
                         <inertial mass="3.587895" pos="-5.317e-2 1.04419e-1 2.7454e-2"
                         fullinertia="2.5853e-2 1.9552e-2 2.8323e-2 7.796e-3 -1.332e-3 8.641e-3"/>
                         <joint name="joint4" range="-2.7478 -0.4461"/>
@@ -54,7 +54,7 @@
                         <geom mesh="link4_c" class="collision"/>
                         <geom type="ellipsoid" size="0.09 0.09 0.15" pos="0 0 0" contype="0" conaffinity="0" group="2" rgba="0.3921 0.5843 0.9294 0.5"/>
 
-                        <body name="link5" pos="-0.0825 0.384 0" quat="1 -1 0 0">
+                        <body name="link5" pos="-0.0825 0.384 0" quat="0.7071067811865476 -0.7071067811865475 0.0 0.0">
                             <inertial mass="1.225946" pos="-1.1953e-2 4.1065e-2 -3.8437e-2"
                                 fullinertia="3.5549e-2 2.9474e-2 8.627e-3 -2.117e-3 -4.037e-3 2.29e-4"/>
                             <joint name="joint5" range="-2.48 2.48"/>
@@ -67,7 +67,7 @@
                             <geom type="ellipsoid" size="0.09 0.09 0.14" pos="0 0 -0.26" contype="0" conaffinity="0" group="2" rgba="0.3921 0.5843 0.9294 0.5"/>
                             <geom type="ellipsoid" size="0.055 0.055 0.125" pos="0 0.08 -0.13" contype="0" conaffinity="0" group="2" rgba="0.3921 0.5843 0.9294 0.5"/>
 
-                            <body name="link6" quat="1 1 0 0">
+                            <body name="link6" quat="0.7071067811865476 0.7071067811865475 0.0 0.0">
                                 <inertial mass="1.666555" pos="6.0149e-2 -1.4117e-2 -1.0517e-2"
                                 fullinertia="1.964e-3 4.354e-3 5.433e-3 1.09e-4 -1.158e-3 3.41e-4"/>
                                 <joint name="joint6" range="0.8521 4.2094"/>
@@ -91,7 +91,7 @@
                                 <geom mesh="link6_c" class="collision"/>
                                 <geom type="ellipsoid" size="0.08 0.08 0.11" pos="0 0 -0.03" contype="0" conaffinity="0" group="2" rgba="0.3921 0.5843 0.9294 0.5"/>
 
-                                <body name="link7" pos="0.088 0 0" quat="1 1 0 0">
+                                <body name="link7" pos="0.088 0 0" quat="0.7071067811865476 0.7071067811865475 0.0 0.0">
                                     <inertial mass="7.35522e-01" pos="1.0517e-2 -4.252e-3 6.1597e-2"
                                         fullinertia="1.2516e-2 1.0027e-2 4.815e-3 -4.28e-4 -1.196e-3 -7.41e-4"/>
                                     <joint name="joint7" range="-2.6895 2.6895"/>

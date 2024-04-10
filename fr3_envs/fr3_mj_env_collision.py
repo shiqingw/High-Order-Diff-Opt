@@ -160,6 +160,9 @@ class FR3MuJocoEnv:
         info["Minv"] = Minv
         info["nle"] = nle
         info["G"] = self.pin_robot.gravity(q)
+        Minv_mj = np.zeros_like(Minv)
+        mujoco.mj_solveM(self.model, self.data, Minv_mj, np.eye(Minv_mj.shape[0]))
+        info["Minv_mj"] = Minv_mj
 
         return info
 

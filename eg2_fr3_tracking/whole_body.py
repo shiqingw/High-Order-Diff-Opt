@@ -145,8 +145,12 @@ if __name__ == "__main__":
         dq = info["dq"]
         nle = info["nle"]
         Minv = info["Minv"]
+        Minv_mj = info["Minv_mj"]
         M = info["M"]
         G = info["G"]
+        # print(Minv_mj)
+        # print(Minv)
+        # print("###############")
 
         P_EE = info["P_EE"]
         R_EE = info["R_EE"]
@@ -231,9 +235,9 @@ if __name__ == "__main__":
                 tmp_mat[0:3,0:3] = np.eye(3, dtype=config.np_dtype)
                 tmp_mat[3:7,3:6] = 0.5 * Q
 
-                C[kk,:] = alpha_dx @ tmp_mat @ J_BB @ Minv
+                C[kk,:] = alpha_dx @ tmp_mat @ J_BB @ Minv_mj
                 lb[kk] = - gamma2[kk]*phi1 - gamma1[kk]*dCBF - dx.T @ alpha_dxdx @ dx - alpha_dx @ tmp_vec \
-                        - alpha_dx @ tmp_mat @ dJdq_BB + alpha_dx @ tmp_mat @ J_BB @ Minv @ nle + compensation[kk]
+                        - alpha_dx @ tmp_mat @ dJdq_BB + alpha_dx @ tmp_mat @ J_BB @ Minv_mj @ nle + compensation[kk]
                 ub[kk] = np.inf
 
                 CBF_tmp[kk] = CBF
@@ -335,9 +339,17 @@ if __name__ == "__main__":
 
     for i in range(n_CBF):
         fig, ax = plt.subplots(figsize=(10,8), dpi=config.dpi, frameon=True)
-        plt.plot(times, cbf_values[:,i], label="CBF")
         plt.plot(times, phi1s[:,i], label="phi1")
         plt.plot(times, phi2s[:,i], label="phi2")
+        plt.axhline(y = 0.0, color = 'black', linestyle = 'dotted', linewidth = 2)
+        plt.legend()
+        plt.tight_layout()
+        plt.savefig(os.path.join(results_dir, 'plot_phi_{:d}.pdf'.format(i+1)))
+        plt.close(fig)
+    
+    for i in range(n_CBF):
+        fig, ax = plt.subplots(figsize=(10,8), dpi=config.dpi, frameon=True)
+        plt.plot(times, cbf_values[:,i], label="CBF")
         plt.axhline(y = 0.0, color = 'black', linestyle = 'dotted', linewidth = 2)
         plt.legend()
         plt.tight_layout()

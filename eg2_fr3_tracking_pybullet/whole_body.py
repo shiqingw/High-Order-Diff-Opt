@@ -374,9 +374,17 @@ if __name__ == '__main__':
 
     for i in range(n_CBF):
         fig, ax = plt.subplots(figsize=(10,8), dpi=config.dpi, frameon=True)
-        plt.plot(times, cbf_values[:,i], label="CBF")
         plt.plot(times, phi1s[:,i], label="phi1")
         plt.plot(times, phi2s[:,i], label="phi2")
+        plt.axhline(y = 0.0, color = 'black', linestyle = 'dotted', linewidth = 2)
+        plt.legend()
+        plt.tight_layout()
+        plt.savefig(os.path.join(results_dir, 'plot_phi_{:d}.pdf'.format(i+1)))
+        plt.close(fig)
+    
+    for i in range(n_CBF):
+        fig, ax = plt.subplots(figsize=(10,8), dpi=config.dpi, frameon=True)
+        plt.plot(times, cbf_values[:,i], label="CBF")
         plt.axhline(y = 0.0, color = 'black', linestyle = 'dotted', linewidth = 2)
         plt.legend()
         plt.tight_layout()
