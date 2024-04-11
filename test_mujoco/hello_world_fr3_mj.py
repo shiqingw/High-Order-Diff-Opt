@@ -8,7 +8,7 @@ from fr3_envs.fr3_mj_env_collision import FR3MuJocoEnv
 
 
 def main():
-    env = FR3MuJocoEnv(xml_name="fr3_on_table_with_bounding_boxes_n_obstacle")
+    env = FR3MuJocoEnv(xml_name="fr3_on_table_with_bounding_boxes_wiping")
     info = env.reset([0.0, -0.785, 0.0, -2.356, 0.0, 2, 0.785, 0.001, 0.001])
 
     target = np.array(

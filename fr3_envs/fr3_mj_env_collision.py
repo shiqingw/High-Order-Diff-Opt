@@ -40,7 +40,18 @@ class FR3MuJocoEnv:
 
         self.model.opt.gravity[2] = -9.81
         self.renderer = None
+        self.ngeom = 0
+        self.maxgeom = 1000
 
+        self.viewer.opt.flags[mujoco.mjtVisFlag.mjVIS_CONTACTPOINT] = True
+        self.viewer.opt.flags[mujoco.mjtVisFlag.mjVIS_CONTACTFORCE] = True
+        # self.viewer.opt.flags[mujoco.mjtVisFlag.mjVIS_TRANSPARENT] = True
+        
+        self.model.vis.scale.contactwidth = 0.1
+        self.model.vis.scale.contactheight = 0.03
+        self.model.vis.scale.forcewidth = 0.05
+        self.model.vis.map.force = 0.3
+        
         # Define base position and orientation
         self.base_p_offset = np.array(base_pos).reshape(-1,1)
         self.base_R_offset = Rotation.from_quat(base_quat).as_matrix()
@@ -81,15 +92,15 @@ class FR3MuJocoEnv:
             "EE": self.EE_FRAME_ID,
             # "CAMERA": self.FR3_CAMERA_FRAME_ID,
         }
+
+        # self.joint_names = ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6", "joint7", "finger_joint1", "finger_joint2"]
         
 
     def reset(self, q_nominal):
-        for i in range(7):
+        for i in range(9):
             self.data.qpos[i] = q_nominal[i]
-
-        self.data.qpos[7] = 0.0
-        self.data.qpos[8] = 0.0
-
+        mujoco.mj_step(self.model, self.data)
+        self.viewer.sync()
         q, dq = self.data.qpos[:9].copy(), self.data.qvel[:9].copy()
         self.update_pinocchio(q, dq)
         info = self.get_info(q, dq)
@@ -167,7 +178,11 @@ class FR3MuJocoEnv:
 
         M_mj = np.zeros_like(M)
         mujoco.mj_fullM(self.model, M_mj, self.data.qM)
-        info["M_mj"] = M_mj    
+        info["M_mj"] = M_mj
+
+        info["qfrc_constraint"] = self.data.qfrc_constraint
+        info["qfrc_smooth"] = self.data.qfrc_smooth
+        info["qfrc_actuator"] = self.data.qfrc_actuator
 
         return info
 
@@ -224,3 +239,26 @@ class FR3MuJocoEnv:
         Rot = T_mat[:3, :3]
 
         return p, Rot
+
+    def add_visual_capsule(self, point1, point2, radius, rgba, id_geom_offset=0, limit_num=False):
+        """Adds one capsule to an mjvScene."""
+        scene = self.viewer.user_scn
+        if limit_num:
+            if self.ngeom >= self.maxgeom:
+                id_geom = self.ngeom % self.maxgeom + id_geom_offset
+            else:
+                scene.ngeom += 1
+                id_geom = self.ngeom + id_geom_offset
+            self.ngeom += 1
+        else:
+            id_geom = scene.ngeom
+            scene.ngeom += 1
+        # initialise a new capsule, add it to the scene using mjv_makeConnector
+        mujoco.mjv_initGeom(scene.geoms[id_geom],
+                            mujoco.mjtGeom.mjGEOM_CAPSULE, np.zeros(3),
+                            np.zeros(3), np.zeros(9), np.array(rgba).astype(np.float32))
+        mujoco.mjv_makeConnector(scene.geoms[id_geom],
+                                mujoco.mjtGeom.mjGEOM_CAPSULE, radius,
+                                point1[0], point1[1], point1[2],
+                                point2[0], point2[1], point2[2])
+        return 

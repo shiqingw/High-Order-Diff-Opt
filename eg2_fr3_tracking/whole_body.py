@@ -104,6 +104,18 @@ if __name__ == "__main__":
     traj_dtdt[:,1] = -traj_radius * traj_angular_velocity**2 * np.cos(traj_angular_velocity*t)
     traj_dtdt[:,2] = -traj_radius * traj_angular_velocity**2 * np.sin(traj_angular_velocity*t)
 
+    # Visualize the trajectory
+    N = 100
+    thetas = np.linspace(0, 2*np.pi, N)
+    traj_circle = np.zeros([N, 3], dtype=config.np_dtype)
+    traj_circle[:,0] = traj_center[0]
+    traj_circle[:,1] = traj_center[1] + traj_radius * np.cos(thetas)
+    traj_circle[:,2] = traj_center[2] + traj_radius * np.sin(thetas)
+    for i in range(N-1):
+        env.add_visual_capsule(traj_circle[i], traj_circle[i+1], 0.004, np.array([1,0,0,1]))
+        env.viewer.sync()
+    id_geom_offset = env.viewer.user_scn.ngeom 
+
     # CBF parameters
     CBF_config = test_settings["CBF_config"]
     alpha0 = CBF_config["alpha0"]
@@ -134,6 +146,7 @@ if __name__ == "__main__":
     all_info = []
 
     # Forward simulate the system
+    P_EE_prev = info["P_EE"]
     print("==> Forward simulate the system")
     for i in range(horizon):
         all_info.append(info)
@@ -158,8 +171,16 @@ if __name__ == "__main__":
         dJdq_EE = info["dJdq_EE"]
         v_EE = J_EE @ dq
 
+        # Visualize the trajectory
+        speed = np.linalg.norm((P_EE-P_EE_prev)/dt)
+        rgba=np.array((np.clip(speed/10, 0, 1),
+                     np.clip(1-speed/10, 0, 1),
+                     .5, 1.))
+        radius=.003*(1+speed)
+        env.add_visual_capsule(P_EE_prev, P_EE, radius, rgba, id_geom_offset, True)
+
         # Primary obejctive: tracking control
-        Kp = np.diag([20,20,20,100,100,100])
+        Kp = np.diag([20,20,20,200,200,200])
         Kd = np.diag([20,20,20,100,100,100])
         
         R_d = np.array([[1, 0, 0],
@@ -177,7 +198,8 @@ if __name__ == "__main__":
         u_joint = M_mj @ (- Kd @ deq - Kp @ eq) # larger control only for the fingers
 
         # Compute the input torque
-        Spinv = S.T @ np.linalg.pinv(S @ S.T + 0.01* np.eye(S.shape[0]))
+        # Spinv = S.T @ np.linalg.pinv(S @ S.T + 0.01* np.eye(S.shape[0]))
+        Spinv = np.linalg.pinv(S)
         u_nominal = nle_mj + Spinv @ u_task + (np.eye(len(q)) - Spinv @ S) @ u_joint 
         # u_nominal = nle + Spinv @ u_task 
 
@@ -267,11 +289,12 @@ if __name__ == "__main__":
 
         # Step the environment
         u = u[:7]
-        finger_pos = 0
+        finger_pos = 0.01
         info = env.step(tau=u, finger_pos=finger_pos)
         time.sleep(max(0,dt-time_control_loop_end+time_control_loop_start))
 
         # Record
+        P_EE_prev = P_EE
         joint_angles[i,:] = q
         controls[i,:] = u
         desired_controls[i,:] = u_nominal
