@@ -111,9 +111,9 @@ if __name__ == "__main__":
     traj_circle = np.zeros([N, 3], dtype=config.np_dtype)
     traj_circle[:,0] = traj_center[0] + traj_radius * np.cos(thetas)
     traj_circle[:,1] = traj_center[1] + traj_radius * np.sin(thetas)
-    traj_circle[:,2] = traj_center[2] + 0.05
+    traj_circle[:,2] = 0.83
     for i in range(N-1):
-        env.add_visual_capsule(traj_circle[i], traj_circle[i+1], 0.004, np.array([1,0,0,1]))
+        env.add_visual_capsule(traj_circle[i], traj_circle[i+1], 0.004, np.array([0,0,1,1]))
         env.viewer.sync()
     id_geom_offset = env.viewer.user_scn.ngeom 
 
@@ -149,7 +149,6 @@ if __name__ == "__main__":
     # Forward simulate the system
     print("==> Forward simulate the system")
     u_prev = info["nle_mj"][:7]
-    dq_prev = info["dq"]
     P_EE_prev = info["P_EE"]
     for i in range(horizon):
         all_info.append(info)
@@ -173,8 +172,6 @@ if __name__ == "__main__":
 
         tau_ext = np.zeros(9, dtype=config.np_dtype)
         tau_ext[:7] += -nle_mj[:7] + u_prev - qfrc_constraint[:7] - qfrc_smooth[:7]
-        # print(tau_ext)
-        # print("#############")
 
         P_EE = info["P_EE"]
         R_EE = info["R_EE"]
@@ -210,13 +207,17 @@ if __name__ == "__main__":
 
         # Compute the input torque
         Spinv = S.T @ np.linalg.pinv(S @ S.T + 0.01* np.eye(S.shape[0]))
+        # Spinv = np.linalg.pinv(S)
         u_nominal = nle_mj + Spinv @ u_task + (np.eye(len(q)) - Spinv @ S) @ u_joint 
-        # u_nominal += tau_ext
+        # u_nominal = nle_mj + Spinv @ u_task 
 
         J_EE_reduced = J_EE[:,:7]
         F_ext = np.linalg.pinv(J_EE_reduced.T) @ tau_ext[:7]
         F_ext_horizontal = F_ext.copy()
-        F_ext_horizontal[2] = 0
+        F_ext_horizontal[2] = -2
+        F_ext_horizontal[3] = 0
+        F_ext_horizontal[4] = 0
+        F_ext_horizontal[5] = 0
         tau_ext_horizontal = J_EE_reduced.T @ F_ext_horizontal
         u_nominal[:7] += tau_ext_horizontal
 
@@ -275,7 +276,7 @@ if __name__ == "__main__":
 
                 C[kk,:] = alpha_dx @ tmp_mat @ J_BB @ Minv_mj
                 lb[kk] = - gamma2[kk]*phi1 - gamma1[kk]*dCBF - dx.T @ alpha_dxdx @ dx - alpha_dx @ tmp_vec \
-                        - alpha_dx @ tmp_mat @ dJdq_BB + alpha_dx @ tmp_mat @ J_BB @ Minv_mj @ nle_mj + compensation[kk]
+                        - alpha_dx @ tmp_mat @ dJdq_BB + alpha_dx @ tmp_mat @ J_BB @ Minv_mj @ (nle_mj + tau_ext) + compensation[kk]
                 ub[kk] = np.inf
 
                 CBF_tmp[kk] = CBF
@@ -312,7 +313,6 @@ if __name__ == "__main__":
 
         # Record
         u_prev = u
-        dq_prev = dq
         P_EE_prev = P_EE
         joint_angles[i,:] = q
         controls[i,:] = u

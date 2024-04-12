@@ -112,7 +112,7 @@ if __name__ == "__main__":
     traj_circle[:,1] = traj_center[1] + traj_radius * np.cos(thetas)
     traj_circle[:,2] = traj_center[2] + traj_radius * np.sin(thetas)
     for i in range(N-1):
-        env.add_visual_capsule(traj_circle[i], traj_circle[i+1], 0.004, np.array([1,0,0,1]))
+        env.add_visual_capsule(traj_circle[i], traj_circle[i+1], 0.004, np.array([0,0,1,1]))
         env.viewer.sync()
     id_geom_offset = env.viewer.user_scn.ngeom 
 
