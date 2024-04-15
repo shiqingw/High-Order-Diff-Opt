@@ -18,14 +18,14 @@ class FR3MuJocoEnv:
                  cam_distance=3.0, cam_azimuth=-90, cam_elevation=-45, cam_lookat=[0.0, -0.25, 0.824], dt=1.0/240):
         package_directory = str(Path(__file__).parent.parent)
 
-        self.model = mujoco.MjModel.from_xml_path(package_directory + f"/robots_mj/{xml_name}.xml")
+        self.model = mujoco.MjModel.from_xml_path(package_directory + f"/fr3_mj/{xml_name}.xml")
 
         # Override the simulation timestep.
         self.model.opt.timestep = dt
 
         self.data = mujoco.MjData(self.model)
 
-        robot_URDF = package_directory + "/robots_mj/{}.urdf".format(urdf_name)
+        robot_URDF = package_directory + "/fr3_mj/{}.urdf".format(urdf_name)
         self.pin_robot = RobotWrapper.BuildFromURDF(robot_URDF, package_directory)
 
         if render:
