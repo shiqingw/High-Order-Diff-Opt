@@ -1,5 +1,5 @@
 {
-    "Quadrotor":{
+    "Quadrotor2D":{
         "type":"Quadrotor2D",
         "properties": {
             "n_states": 6,
@@ -11,6 +11,24 @@
             "mass": 0.6,
             "inertia": 0.15,
             "length": 0.25,
+            "gravity": 9.81, 
+            "delta_t": 0.01
+        }
+    },
+
+    "Quadrotor3D":{
+        "type":"Quadrotor3D",
+        "properties": {
+            "n_states": 13,
+            "n_controls": 4,
+            "u1_constraint": [-100,100],
+            "u2_constraint": [-100,100],
+            "u3_constraint": [-100,100],
+            "u4_constraint": [-100,100]
+        },
+        "params":{
+            "mass": 1.325,
+            "inertia": [0.87,0.83,0.75],
             "gravity": 9.81, 
             "delta_t": 0.01
         }

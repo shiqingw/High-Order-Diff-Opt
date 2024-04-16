@@ -57,7 +57,7 @@ def get_dQ_matrix(dquat):
 
 def sp_get_rot_matrix_from_quat(quat):
     """
-    The quaternion value is in scalar-first (x, y, z, w) format
+    The quaternion value is in (qx, qy, qz, qw) format
     """
     qx, qy, qz, qw = quat
     rot_matrix = sp.Matrix([[2*(qw**2+qx**2)-1, 2*(qx*qy-qw*qz), 2*(qx*qz+qw*qy)],
@@ -67,7 +67,7 @@ def sp_get_rot_matrix_from_quat(quat):
 
 def np_get_rot_matrix_from_quat(quat):
     """
-    The quaternion value is in scalar-first (x, y, z, w) format
+    The quaternion value is in (qx, qy, qz, qw) format
     """
     qx, qy, qz, qw = quat
     rot_matrix = np.array([[2*(qw**2+qx**2)-1, 2*(qx*qy-qw*qz), 2*(qx*qz+qw*qy)],
