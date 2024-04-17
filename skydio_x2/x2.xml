@@ -35,7 +35,7 @@
       <freejoint/>
       <camera name="track" pos="-1 0 .5" xyaxes="0 -1 0 1 0 2" mode="trackcom"/>
       <site name="imu" pos="0 0 .02"/>
-      <geom type="ellipsoid" size="0.40 0.40 0.13" pos="0 0 0.09" contype="0" conaffinity="0" group="2" rgba="0.3921 0.5843 0.9294 0.5"/>
+      <!-- <geom type="ellipsoid" size="0.40 0.40 0.13" pos="0 0 0.09" contype="0" conaffinity="0" group="2" rgba="0.3921 0.5843 0.9294 0.5"/> -->
       <geom material="phong3SG" mesh="X2_lowpoly" class="visual" quat="0 0 1 1"/>
       <geom class="collision" size=".06 .027 .02" pos=".04 0 .02"/>
       <geom class="collision" size=".06 .027 .02" pos=".04 0 .06"/>

@@ -17,33 +17,33 @@ class Quadrotor3D():
         self.gravity = params_dict['gravity']
         self.delta_t = params_dict['delta_t']
 
-        x, y, z, vx, vy, vz = sp.symbols('x y z v_x v_y v_z')
+        x, y, z, vx, vy, vz = sp.symbols('x y z vx vy vz')
         qx, qy, qz, qw, wx, wy, wz = sp.symbols('qx qy qz qw wx wy wz')
         u1, u2, u3, u4 = sp.symbols('u1 u2 u3 u4')
 
-        Q = sp.Matrix([[qw, qz, -qy],
-                    [-qz, qw, qx],
-                    [qy, -qx, qw],
-                    [-qx, -qy, -qz]])
+        Q = sp.Matrix([[qw, -qz, qy],
+                    [qz, qw, -qx],
+                    [-qy, qx, qw],
+                    [-qx, -qy, -qz]]) # becuase omega is in the body frame
         
         omega = sp.Matrix([wx, wy, wz])
         u = sp.Matrix([u1,u2,u3,u4])
 
         r13 = 2*(qx*qz+qw*qy)
         r23 = 2*(qy*qz-qw*qx)
-        r33 = 2*(qw**2+qz**2)-1
+        r33 = 1 - 2*(qx**2+qy**2)
 
         J = self.inertia
-        J_inv = np.linalg.inv(self.inertia)
+        J_inv = np.linalg.inv(J)
 
         states = [x,y,z,qx,qy,qz,qw,vx,vy,vz,wx,wy,wz] # shape (13,)
         controls = [u1,u2,u3,u4]
 
         drift1 = sp.Matrix([vx, vy, vz]) # shape (3,1)
-        drift2 = 0.5 * Q @ omega # shpae (4,1)
+        drift2 = 0.5 * Q @ omega # shpae (4,1).
         drift3 = sp.Matrix([0,0,-self.gravity]) # shape (3,1)
-        drift4 = - J_inv @ omega.cross(J @ omega) # shape (3,1)
-        drift = drift1.col_join(drift2).col_join(drift3).col_join(drift4)
+        drift4 = - J_inv @ (omega.cross(J @ omega)) # shape (3,1)
+        drift = drift1.col_join(drift2).col_join(drift3).col_join(drift4) # shape (13,1)
 
         self.drift_func = sp.lambdify(states, drift, 'numpy')
 
@@ -61,6 +61,7 @@ class Quadrotor3D():
 
         full_dynamics = drift + actuation @ u
         discretized_dynamics = sp.Matrix(states) + self.delta_t*full_dynamics
+        
         linearized_A = discretized_dynamics.jacobian(states)
         linearized_B = discretized_dynamics.jacobian(controls)
         self.linearized_A_func = sp.lambdify(states + controls, linearized_A, 'numpy')
@@ -104,6 +105,8 @@ class Quadrotor3D():
         u[3] = np.clip(u[3], self.u4_constraint[0], self.u4_constraint[1])
         dxdt = np.squeeze(self.drift(x)) + self.actuation(x) @ u
         x_next = x + self.delta_t*dxdt
+        x_next[3:7] = x_next[3:7]/np.linalg.norm(x_next[3:7])
+        x_next[3:7] = x_next[3:7] * np.sign(x_next[6])
         return x_next
     
     def simulate(self, x0, controller, horizon_length, disturbance=False):

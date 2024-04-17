@@ -74,3 +74,10 @@ def np_get_rot_matrix_from_quat(quat):
                             [2*(qx*qy+qw*qz), 2*(qw**2+qy**2)-1, 2*(qy*qz-qw*qx)],
                             [2*(qx*qz-qw*qy), 2*(qy*qz+qw*qx), 2*(qw**2+qz**2)-1]])
     return rot_matrix
+
+def np_get_quat_qw_first(quat):
+    """
+    The original quaternion value is in (qx, qy, qz, qw) format
+    """
+    return np.array([quat[3], quat[0], quat[1], quat[2]])
+    

@@ -1,8 +1,7 @@
 {
     "system_name": "Quadrotor3D",
     "seed": 0,
-    "horizon": 10000,
-    "initial_pos": [0,0,1],
+    "initial_pos": [0,2,2],
     "initial_quat": [0,0,0,1],
 
     "input_limits_config":{
@@ -11,10 +10,10 @@
     },
 
     "simulator_config":{
-        "cam_distance": 3.0, 
+        "cam_distance": 10.0, 
         "cam_azimuth": 180,
         "cam_elevation": -20,
-        "cam_lookat": [-0.25, 0.0, 0.824]
+        "cam_lookat": [0.0, 0.0, 0.5]
     },
 
     "trajectory_config":{},
