@@ -18,6 +18,9 @@
 
   <worldbody>
     <light mode="trackcom" pos="0 0 10" dir="0 0 -1" directional="true" cutoff="180"/>
+    <light mode="trackcom" pos="0 0 10" dir="0 0 -1" directional="true" cutoff="180"/>
     <geom name="floor" size="10 10 0.05" type="plane" material="groundplane"/>
+
+    <geom type="ellipsoid" size="1.4 1.4 1.0" pos="0 0 2" quat="1 0 0 0" rgba="1 0 0 1" contype="0" conaffinity="0"/>
   </worldbody>
 </mujoco>
