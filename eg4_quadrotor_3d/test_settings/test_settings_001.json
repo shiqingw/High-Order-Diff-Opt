@@ -1,7 +1,7 @@
 {
     "system_name": "Quadrotor3D",
     "seed": 0,
-    "horizon": 2000,
+    "horizon": 4000,
     "initial_pos": [0,4,0],
     "initial_quat": [0,0,0,1],
     "bounding_ellipsoid_offset": [0,0,0.09],
@@ -30,7 +30,7 @@
     },
 
     "CBF_config":{
-        "active": 1,
+        "active": 0,
         "alpha0": 1.3,
         "gamma1": 7.0,
         "gamma2": 10.0,

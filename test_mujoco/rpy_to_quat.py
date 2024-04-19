@@ -2,8 +2,8 @@ from scipy.spatial.transform import Rotation
 import numpy as np
 
 # RPY angles in radians
-roll = 0
-pitch = np.pi/4
+roll = 0.1
+pitch = 0
 yaw = 0
 
 # Create a Rotation object from RPY

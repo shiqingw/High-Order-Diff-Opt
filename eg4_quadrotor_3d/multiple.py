@@ -82,9 +82,8 @@ if __name__ == '__main__':
     obstacle_config = test_settings["obstacle_config"]
     n_obstacle = len(obstacle_config)
     obs_col = JohnEllipsoidCollections(3, n_obstacle, obstacle_config)
-    for i in range(n_obstacle):
-        env.add_visual_ellipsoid(obs_col.sizes[i], obs_col.centers[i], obs_col.Rs[i], [0,1,0,0.5])
-    # time.sleep(5)
+    # for i in range(n_obstacle):
+    #     env.add_visual_ellipsoid(obs_col.sizes[i], obs_col.centers[i], obs_col.Rs[i], [0,1,0,0.5])
 
     # Tracking control via LQR
     horizon = test_settings["horizon"]
@@ -112,7 +111,7 @@ if __name__ == '__main__':
     x_traj[:,0] = start_point[0] + linear_vel[0] * t_traj
     x_traj[:,1] = start_point[1] + linear_vel[1] * t_traj
     x_traj[:,2] = start_point[2] + linear_vel[2] * t_traj
-    x_traj[:,3:7] = np.array([0,0,0,1], dtype=config.np_dtype)
+    x_traj[:,3:7] = np.array([0.0, 0.0, 0.0, 1.0], dtype=config.np_dtype)
     x_traj[:,7] = linear_vel[0] * np.ones(x_traj.shape[0])
     x_traj[:,8] = linear_vel[1] * np.ones(x_traj.shape[0])
     x_traj[:,9] = linear_vel[2] * np.ones(x_traj.shape[0])
@@ -120,6 +119,7 @@ if __name__ == '__main__':
     u_traj = np.zeros([horizon, system.n_controls])
     u_traj[:,0] = system.gravity * np.ones(u_traj.shape[0])
 
+    ####### LQR cost and linearized dynamics #######
     A_list = np.empty((horizon, system.n_states, system.n_states))
     B_list = np.empty((horizon, system.n_states, system.n_controls))
     for i in range(horizon):
@@ -127,8 +127,8 @@ if __name__ == '__main__':
         A_list[i] = A
         B_list[i] = B
     Q_pos = [10,10,10]
-    Q_quat = [10,10,10,10]
-    Q_v = [10,10,10]
+    Q_quat = [0.1, 0.1, 0.1, 0.1]
+    Q_v = [1,1,1]
     Q_omega = [0,0,0]
     Q_lqr = np.diag(Q_pos+Q_quat+Q_v+Q_omega)
     Q_list = np.array([Q_lqr]*(horizon +1))
@@ -228,15 +228,16 @@ if __name__ == '__main__':
                 else:
                     CBF = 0
                     phi1 = 0
-                    
+
                 phi1_tmp[kk] = phi1
                 CBF_tmp[kk] = CBF
 
-            g = -u_nominal
+            H = np.diag([1,1,1,1]).astype(config.np_dtype)
+            g = -H @ u_nominal
             C[n_CBF:n_CBF+n_controls,:] = np.eye(n_controls, dtype=config.np_dtype)
             lb[n_CBF:] = input_lb
             ub[n_CBF:] = input_ub
-            cbf_qp.update(g=g, C=C, l=lb, u=ub)
+            cbf_qp.update(H=H, g=g, C=C, l=lb, u=ub)
             time_cbf_qp_start = time.time()
             cbf_qp.solve()
             time_cbf_qp_end = time.time()

@@ -105,19 +105,22 @@ if __name__ == '__main__':
     N = 100
     thetas = np.linspace(0, 2*np.pi, N)
     traj_ellipse = np.zeros([N, 3], dtype=config.np_dtype)
-    traj_ellipse[:,1] = traj_center[1] + semi_major_axis * np.sin(thetas)
-    traj_ellipse[:,2] = traj_center[2] + semi_minor_axis * np.cos(thetas)
+    traj_ellipse[:,0] = traj_center[0] + semi_major_axis * np.sin(thetas)
+    traj_ellipse[:,1] = traj_center[1] + semi_minor_axis * np.cos(thetas)
+    traj_ellipse[:,2] = traj_center[2]
     for i in range(N-1):
         env.add_visual_capsule(traj_ellipse[i], traj_ellipse[i+1], 0.004, np.array([0,0,1,1]))
         env.viewer.sync()
     id_geom_offset = env.viewer.user_scn.ngeom 
 
     ######## Compute the trajectory #######
-    x_traj[:,1] = semi_major_axis * np.cos(angular_vel_traj*t_traj + initial_phase) + traj_center[1] # y
-    x_traj[:,2] = semi_minor_axis * np.sin(angular_vel_traj*t_traj + initial_phase) + traj_center[2] # z
-    x_traj[:,6] = np.ones(x_traj.shape[0])
-    x_traj[:,8] = -semi_major_axis * angular_vel_traj * np.sin(angular_vel_traj*t_traj) # xdot
-    x_traj[:,9] = semi_minor_axis * angular_vel_traj * np.cos(angular_vel_traj*t_traj) # ydot
+    x_traj[:,0] = semi_major_axis * np.cos(angular_vel_traj*t_traj + initial_phase) + traj_center[0] # x
+    x_traj[:,1] = semi_minor_axis * np.sin(angular_vel_traj*t_traj + initial_phase) + traj_center[1] # y
+    x_traj[:,2] = traj_center[2] # z
+    x_traj[:,3:7] = np.array([0,0,0,1], dtype=config.np_dtype)
+    x_traj[:,7] = -semi_major_axis * angular_vel_traj * np.sin(angular_vel_traj*t_traj) # xdot
+    x_traj[:,8] = semi_minor_axis * angular_vel_traj * np.cos(angular_vel_traj*t_traj) # ydot
+
     u_traj = np.zeros([horizon, system.n_controls])
     u_traj[:,0] = system.gravity * np.ones(u_traj.shape[0])
 

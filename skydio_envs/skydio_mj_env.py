@@ -35,7 +35,7 @@ class SkydioMuJocoEnv:
         self.model.opt.gravity[2] = 0
         self.renderer = None
         self.ngeom = 0
-        self.maxgeom = 100
+        self.maxgeom = 200
 
         self.viewer.opt.flags[mujoco.mjtVisFlag.mjVIS_CONTACTPOINT] = True # contact points
         self.viewer.opt.flags[mujoco.mjtVisFlag.mjVIS_CONTACTFORCE] = True # contact force
