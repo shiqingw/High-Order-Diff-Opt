@@ -1,9 +1,10 @@
 from scipy.spatial.transform import Rotation
+import numpy as np
 
 # RPY angles in radians
 roll = 0
-pitch = 0
-yaw = -0.7853981633974483
+pitch = np.pi/4
+yaw = 0
 
 # Create a Rotation object from RPY
 rotation = Rotation.from_euler('xyz', [roll, pitch, yaw])

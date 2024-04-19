@@ -67,7 +67,7 @@ if __name__ == '__main__':
     initial_pos = np.array(test_settings["initial_pos"], dtype=config.np_dtype)
     initial_quat = np.array(test_settings["initial_quat"], dtype=config.np_dtype)
     dt = system.delta_t
-    env = SkydioMuJocoEnv(xml_name="scene", cam_distance=cam_distance, cam_azimuth=cam_azimuth,
+    env = SkydioMuJocoEnv(xml_name="scene_ellipsoid", cam_distance=cam_distance, cam_azimuth=cam_azimuth,
                           cam_elevation=cam_elevation, cam_lookat=cam_lookat, dt=dt)
     env.reset(initial_pos, np_get_quat_qw_first(initial_quat), np.zeros(3), np.zeros(3))
 

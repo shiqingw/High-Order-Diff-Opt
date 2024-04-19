@@ -6,7 +6,7 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 
 # Load the model
-model = mujoco.MjModel.from_xml_path("skydio_x2/scene.xml")
+model = mujoco.MjModel.from_xml_path("skydio_x2/scene_cylinder.xml")
 
 data = mujoco.MjData(model)
 
