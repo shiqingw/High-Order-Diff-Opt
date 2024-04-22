@@ -12,7 +12,7 @@ import matplotlib
 matplotlib.use('Agg')  # Set the backend to 'Agg'
 
 from skydio_envs.skydio_mj_env import SkydioMuJocoEnv
-from cores.utils.utils import seed_everything, save_dict, load_dict
+from cores.utils.utils import seed_everything, save_dict, load_dict, get_orthogonal_vector
 from cores.utils.rotation_utils import np_get_quat_qw_first
 from cores.utils.control_utils import solve_LQR_tracking, solve_infinite_LQR
 from cores.utils.proxsuite_utils import init_proxsuite_qp
@@ -24,7 +24,7 @@ from cores.obstacle_collections.john_ellipsoid_collections import JohnEllipsoidC
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--exp_num', default=2, type=int, help='test case number')
+    parser.add_argument('--exp_num', default=3, type=int, help='test case number')
     args = parser.parse_args()
 
     # Create result directory
@@ -68,7 +68,7 @@ if __name__ == '__main__':
     initial_pos = np.array(test_settings["initial_pos"], dtype=config.np_dtype)
     initial_quat = np.array(test_settings["initial_quat"], dtype=config.np_dtype)
     dt = system.delta_t
-    env = SkydioMuJocoEnv(xml_name="scene_multiple", cam_distance=cam_distance, cam_azimuth=cam_azimuth,
+    env = SkydioMuJocoEnv(xml_name="scene_circulate", cam_distance=cam_distance, cam_azimuth=cam_azimuth,
                           cam_elevation=cam_elevation, cam_lookat=cam_lookat, dt=dt)
     env.reset(initial_pos, np_get_quat_qw_first(initial_quat), np.zeros(3), np.zeros(3))
 
@@ -82,8 +82,8 @@ if __name__ == '__main__':
     obstacle_config = test_settings["obstacle_config"]
     n_obstacle = len(obstacle_config)
     obs_col = JohnEllipsoidCollections(3, n_obstacle, obstacle_config)
-    # for i in range(n_obstacle):
-    #     env.add_visual_ellipsoid(obs_col.sizes[i], obs_col.centers[i], obs_col.Rs[i], [0,1,0,0.5])
+    for i in range(n_obstacle):
+        env.add_visual_ellipsoid(obs_col.sizes[i], obs_col.centers[i], obs_col.Rs[i], [0,1,0,0.5])
 
     # Tracking control via LQR
     horizon = test_settings["horizon"]
@@ -154,7 +154,7 @@ if __name__ == '__main__':
     print("==> Define proxuite problem")
     n_CBF = obs_col.n_obsctacles
     n_controls = 4
-    cbf_qp = init_proxsuite_qp(n_v=n_controls, n_eq=0, n_in=n_controls+n_CBF)
+    cbf_qp = init_proxsuite_qp(n_v=n_controls, n_eq=0, n_in=n_controls+2*n_CBF)
 
     # Create records
     print("==> Create records")
@@ -173,6 +173,7 @@ if __name__ == '__main__':
     time_control_loop = np.zeros(horizon, dtype=config.np_dtype)
     
     p_prev = states[0,0:3]
+    u_prev = u_traj[0,:]
     for i in range(horizon):
         time_control_loop_start = time.time()
         state = states[i,:]
@@ -186,9 +187,11 @@ if __name__ == '__main__':
         time_diff_helper_tmp = 0
         if CBF_config["active"]:
             # Matrices for the CBF-QP constraints
-            C = np.zeros([n_controls+n_CBF, n_controls], dtype=config.np_dtype)
-            lb = np.zeros(n_controls+n_CBF, dtype=config.np_dtype)
-            ub = np.zeros(n_controls+n_CBF, dtype=config.np_dtype)
+            # Order of the consraints: [CBF1, ... , CBFn, u_lim_1, ..., u_lim_4, circulate_1, ..., circulate_n]
+            C = np.zeros([n_controls+2*n_CBF, n_controls], dtype=config.np_dtype)
+            lb = np.zeros(n_controls+2*n_CBF, dtype=config.np_dtype)
+            ub = np.zeros(n_controls+2*n_CBF, dtype=config.np_dtype)
+
             CBF_tmp = np.zeros(n_CBF, dtype=config.np_dtype)
             phi1_tmp = np.zeros(n_CBF, dtype=config.np_dtype)
             phi2_tmp = np.zeros(n_CBF, dtype=config.np_dtype)
@@ -225,6 +228,27 @@ if __name__ == '__main__':
                     lb[kk] = -drift.T @ alpha_dxdx @ drift - alpha_dx @ drift_jac @ drift \
                         - (gamma1+gamma2) * alpha_dx @ drift - gamma1 * gamma2 * CBF + compensation
                     ub[kk] = np.inf
+
+                    # Circulating constraints
+                    preferred_direction = np.array([1,0,0,0,0,0,0], dtype=config.np_dtype)
+                    alpha_dx_perb_tmp = get_orthogonal_vector(alpha_dx[0:7], preferred_direction)
+                    alpha_dx_pinv = np.linalg.pinv(alpha_dx[0:7][np.newaxis,:]) # shape = (7,1)
+                    alpha_dxdx_perb_tmp = alpha_dx_pinv @ alpha_dx_perb_tmp[np.newaxis,:] @ alpha_dxdx[0:7,0:7]
+                    
+                    alpha_dx_perb = np.zeros(system.n_states, dtype=config.np_dtype)
+                    alpha_dx_perb[0:7] = alpha_dx_perb_tmp
+                    alpha_dxdx_perb = np.zeros((system.n_states, system.n_states), dtype=config.np_dtype)
+                    alpha_dxdx_perb[0:7,0:7] = alpha_dxdx_perb_tmp
+
+                    gamma3 = 1
+                    offset = 1000
+                    gamma4 = 1
+                    phi1_perb = alpha_dx_perb @ drift - gamma3/(offset + CBF) # scalar
+                    C[n_CBF + n_controls + kk,:] = alpha_dx_perb @ drift_jac @ actuation
+                    lb[n_CBF + n_controls + kk] = -drift.T @ alpha_dxdx_perb @ drift - alpha_dx_perb @ drift_jac @ drift \
+                        - gamma3 * alpha_dx @ drift /(offset+CBF)**2 - gamma4 * phi1_perb
+                    ub[n_CBF + n_controls + kk] = np.inf
+
                 else:
                     CBF = 0
                     phi1 = 0
@@ -232,11 +256,14 @@ if __name__ == '__main__':
                 phi1_tmp[kk] = phi1
                 CBF_tmp[kk] = CBF
 
+            # Control limits
+            C[n_CBF:n_CBF+n_controls,:] = np.eye(n_controls, dtype=config.np_dtype)
+            lb[n_CBF:n_CBF+n_controls] = input_lb
+            ub[n_CBF:n_CBF+n_controls] = input_ub
+
+            # Update the CBF-QP
             H = np.diag([1,1,1,1]).astype(config.np_dtype)
             g = -H @ u_nominal
-            C[n_CBF:n_CBF+n_controls,:] = np.eye(n_controls, dtype=config.np_dtype)
-            lb[n_CBF:] = input_lb
-            ub[n_CBF:] = input_ub
             cbf_qp.update(H=H, g=g, C=C, l=lb, u=ub)
             time_cbf_qp_start = time.time()
             cbf_qp.solve()
@@ -268,6 +295,7 @@ if __name__ == '__main__':
         radius=.003*(1+speed)
         env.add_visual_capsule(p_prev, p_new, radius, rgba, id_geom_offset, True)
         p_prev = p_new
+        u_prev = u
 
         # Record
         states[i+1,:] = new_state

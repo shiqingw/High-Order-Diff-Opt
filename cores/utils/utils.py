@@ -77,3 +77,14 @@ def get_skew_symmetric_matrix(v):
     v: np.array of shape (3,)
     """
     return np.array([[0, -v[2], v[1]], [v[2], 0, -v[0]], [-v[1], v[0], 0]])
+
+def get_orthogonal_vector(v, u):
+    v_dot_v = np.dot(v, v)
+    if v_dot_v == 0:
+        raise ValueError("Vector v must not be the zero vector.")
+    proj_u_on_v = (np.dot(u, v) / v_dot_v) * v  # Project u onto v
+    w = u - proj_u_on_v  # Subtract to get the orthogonal component
+    # Normalize w
+    if np.linalg.norm(w) != 0:
+        w = w / np.linalg.norm(w)
+    return w
