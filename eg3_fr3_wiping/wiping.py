@@ -69,6 +69,7 @@ if __name__ == "__main__":
     base_quat = simulator_config["base_quat"]
     initial_joint_angles = test_settings["initial_joint_angles"]
     dt = 1.0/240.0
+    # dt = 0.002
 
     env = FR3MuJocoEnv(xml_name="fr3_on_table_with_bounding_boxes_wiping", base_pos=base_pos, base_quat=base_quat,
                     cam_distance=cam_distance, cam_azimuth=cam_azimuth, cam_elevation=cam_elevation, cam_lookat=cam_lookat, dt=dt)
@@ -168,7 +169,6 @@ if __name__ == "__main__":
         nle_mj = info["nle_mj"]
         qfrc_constraint = info["qfrc_constraint"]
         qfrc_smooth = info["qfrc_smooth"]
-        u_applied = info["qfrc_actuator"]
 
         tau_ext = np.zeros(9, dtype=config.np_dtype)
         tau_ext[:7] += -nle_mj[:7] + u_prev - qfrc_constraint[:7] - qfrc_smooth[:7]

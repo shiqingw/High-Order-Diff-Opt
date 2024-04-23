@@ -1,5 +1,4 @@
 import time
-from copy import deepcopy
 
 import matplotlib.pyplot as plt
 import mujoco
@@ -146,7 +145,7 @@ class FR3MuJocoEnv:
         """
 
         # Get Jacobian from grasp target frame
-        # preprocessing is done in get_state_update_pinocchio()
+        # preprocessing is done in update_pinocchio()
         info = {"q": q,
                 "dq": dq}
         
