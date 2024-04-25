@@ -15,7 +15,7 @@ from cores.utils.utils import seed_everything, save_dict, load_dict, points2d_to
 from cores.utils.control_utils import solve_LQR_tracking
 from cores.utils.proxsuite_utils import init_proxsuite_qp
 from cores.dynamical_systems.create_system import get_system
-import cores_cpp.diffOptCpp as DOC
+import diffOptHelper as DOC
 from cores.configuration.configuration import Configuration
 
 if __name__ == '__main__':

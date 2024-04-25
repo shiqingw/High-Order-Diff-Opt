@@ -17,7 +17,7 @@ from cores.utils.rotation_utils import np_get_quat_qw_first
 from cores.utils.control_utils import solve_LQR_tracking, solve_infinite_LQR
 from cores.utils.proxsuite_utils import init_proxsuite_qp
 from cores.dynamical_systems.create_system import get_system
-import cores_cpp.diffOptCpp as DOC
+import diffOptHelper as DOC
 from cores.configuration.configuration import Configuration
 from scipy.spatial.transform import Rotation
 
