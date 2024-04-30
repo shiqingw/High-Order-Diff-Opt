@@ -10,8 +10,6 @@ def get_quat_from_rot_matrix(rot_matrix):
     """
     r = R.from_matrix(rot_matrix)
     quat = r.as_quat()
-    # if quat[-1] != 0:
-    #     quat = quat / np.sign(quat[-1])
     return quat
 
 def get_rot_matrix_from_quat(quat):
@@ -80,4 +78,34 @@ def np_get_quat_qw_first(quat):
     The original quaternion value is in (qx, qy, qz, qw) format
     """
     return np.array([quat[3], quat[0], quat[1], quat[2]])
+
+def get_homogenous_matrix(R, p):
+    """
+    Returns a homogenous matrix with the rotation matrix R and the position vector p
+
+    Args:
+        R (np.array): rotation matrix, shape (3,3)
+        p (np.array): position vector, shape (3,)
     
+    Returns:
+        H (np.array): homogenous matrix, shape (4,4)
+    """
+    H = np.eye(4)
+    H[:3, :3] = R
+    H[:3, 3] = p
+    return H
+
+def inverse_homogenous_matrix(H):
+    """
+    Returns the inverse of a homogenous matrix
+
+    Args:
+        H (np.array): homogenous matrix, shape (4,4)
+    
+    Returns:
+        H_inv (np.array): inverse of homogenous matrix, shape (4,4)
+    """
+    H_inv = np.eye(4)
+    H_inv[:3, :3] = H[:3, :3].T
+    H_inv[:3, 3] = -H[:3, :3].T @ H[:3, 3]
+    return H_inv

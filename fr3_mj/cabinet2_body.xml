@@ -1,0 +1,16 @@
+<mujoco model="cabinet_body">
+    <body name="wood_cabinet" childclass="cabinet" pos="0.8 0.0 0.0" quat="1.0 0.0 0.0 1.0">
+        <!-- Bottom board -->
+        <geom type="box" size="0.3 0.2 0.025" pos="0.0 0.0 0.025"/>
+        
+        <!-- Side boards -->
+        <geom type="box" size="0.025 0.2 0.5" pos="0.275 0.0 0.55" />
+        <geom type="box" size="0.025 0.2 0.5" pos="-0.275 0.0 0.55"/>
+
+        <!-- Middle board -->
+        <geom type="box" size="0.25 0.2 0.025" pos="0.0 0.0 0.7"/>
+
+        <!-- Top board -->
+        <geom type="box" size="0.3 0.2 0.025" pos="0.0 0.0 1.075"/>
+    </body>
+</mujoco>

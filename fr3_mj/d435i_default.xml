@@ -1,0 +1,11 @@
+<mujoco model="d435i_default">
+    <default class="d435i">
+        <material specular="0" shininess="0.25"/>
+        <default class="d435i_visual">
+            <geom group="2" type="mesh" contype="0" conaffinity="0" mass="0"/>
+        </default>
+        <default class="d435i_collision">
+            <geom group="3" type="mesh" mass="0"/>
+        </default>
+    </default>
+</mujoco>
