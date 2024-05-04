@@ -20,6 +20,7 @@ from cores.utils.rotation_utils import get_quat_from_rot_matrix, get_Q_matrix_fr
 from cores.utils.control_utils import get_torque_to_track_traj_const_ori
 from cores.configuration.configuration import Configuration
 from scipy.spatial.transform import Rotation
+import mediapy as media
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -65,15 +66,18 @@ if __name__ == "__main__":
     cam_azimuth = simulator_config["cam_azimuth"]
     cam_elevation = simulator_config["cam_elevation"]
     cam_lookat = simulator_config["cam_lookat"]
+    image_height = simulator_config["image_height"]
+    image_width = simulator_config["image_width"]
     base_pos = simulator_config["base_pos"]
     base_quat = simulator_config["base_quat"]
     initial_joint_angles = test_settings["initial_joint_angles"]
-    dt = 1.0/240.0
+    dt = 1.0/100
     # dt = 0.002
 
     env = FR3MuJocoEnv(xml_name="fr3_on_table_with_bounding_boxes_wiping", base_pos=base_pos, base_quat=base_quat,
                     cam_distance=cam_distance, cam_azimuth=cam_azimuth, cam_elevation=cam_elevation, cam_lookat=cam_lookat, dt=dt)
-    
+    env.create_renderer(image_height, image_width)
+    camera_name = "fixed"
     info = env.reset(initial_joint_angles)
     
     # Load the obstacle
@@ -147,12 +151,18 @@ if __name__ == "__main__":
     time_control_loop = np.zeros(horizon, dtype=config.np_dtype)
     all_info = []
 
+    video_frames = []
+
     # Forward simulate the system
     print("==> Forward simulate the system")
     u_prev = info["nle_mj"][:7]
     P_EE_prev = info["P_EE"]
     for i in range(horizon):
         all_info.append(info)
+
+        if simulator_config["save_video"]:
+            rgb_image = env.get_rgb_image(camera=camera_name)
+            video_frames.append(rgb_image)
 
         time_control_loop_start = time.time()
 
@@ -430,5 +440,11 @@ if __name__ == "__main__":
     print("==> CVXPY solving time: {:.5f} s".format(np.mean(time_cvxpy)))
     print("==> Diff helper solving time: {:.5f} s".format(np.mean(time_diff_helper)))
     print("==> CBF-QP solving time: {:.5f} s".format(np.mean(time_cbf_qp)))
+
+    # Save video
+    if simulator_config["save_video"]:
+        print("==> Save video")
+        video_path = os.path.join(results_dir, "video.mp4")
+        media.write_video(video_path, video_frames, fps=1/dt)
 
     print("==> Done!")

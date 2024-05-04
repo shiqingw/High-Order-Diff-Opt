@@ -111,3 +111,12 @@ class SkydioMuJocoEnv:
                             np.array(pos), np.array(mat).flatten(), np.array(rgba).astype(np.float32))
         self.viewer.sync()
         return
+    
+    def create_renderer(self, height, width):
+        self.renderer = mujoco.Renderer(self.model, height, width)
+
+    def get_rgb_image(self, camera, scene_option=None):
+        self.renderer.update_scene(self.data, camera=camera, scene_option=scene_option)
+        rgb = self.renderer.render()
+
+        return rgb

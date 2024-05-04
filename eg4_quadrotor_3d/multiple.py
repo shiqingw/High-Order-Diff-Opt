@@ -21,6 +21,7 @@ import diffOptHelper as DOC
 from cores.configuration.configuration import Configuration
 from scipy.spatial.transform import Rotation
 from cores.obstacle_collections.john_ellipsoid_collections import JohnEllipsoidCollections
+import mediapy as media
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -65,12 +66,16 @@ if __name__ == '__main__':
     cam_azimuth = simulator_config["cam_azimuth"]
     cam_elevation = simulator_config["cam_elevation"]
     cam_lookat = simulator_config["cam_lookat"]
+    image_height = simulator_config["image_height"]
+    image_width = simulator_config["image_width"]
     initial_pos = np.array(test_settings["initial_pos"], dtype=config.np_dtype)
     initial_quat = np.array(test_settings["initial_quat"], dtype=config.np_dtype)
     dt = system.delta_t
     env = SkydioMuJocoEnv(xml_name="scene_multiple", cam_distance=cam_distance, cam_azimuth=cam_azimuth,
                           cam_elevation=cam_elevation, cam_lookat=cam_lookat, dt=dt)
     env.reset(initial_pos, np_get_quat_qw_first(initial_quat), np.zeros(3), np.zeros(3))
+    env.create_renderer(image_height, image_width)
+    camera_name = "fixed"
 
     # Quadrotor bounding ellipsoid
     bounding_ellipsoid_offset = np.array(test_settings["bounding_ellipsoid_offset"], config.np_dtype)
@@ -171,9 +176,15 @@ if __name__ == '__main__':
     time_diff_helper = np.zeros(horizon, dtype=config.np_dtype)
     time_cbf_qp = np.zeros(horizon, dtype=config.np_dtype)
     time_control_loop = np.zeros(horizon, dtype=config.np_dtype)
+
+    video_frames = []
     
     p_prev = states[0,0:3]
     for i in range(horizon):
+        if simulator_config["save_video"]:
+            rgb_image = env.get_rgb_image(camera=camera_name)
+            video_frames.append(rgb_image)
+
         time_control_loop_start = time.time()
         state = states[i,:]
         P_BB = state[0:3] + bounding_ellipsoid_offset
@@ -408,5 +419,11 @@ if __name__ == '__main__':
     print("==> CVXPY solving time: {:.5f} s".format(np.mean(time_cvxpy)))
     print("==> Diff helper solving time: {:.5f} s".format(np.mean(time_diff_helper)))
     print("==> CBF-QP solving time: {:.5f} s".format(np.mean(time_cbf_qp)))
+
+    # Save video
+    if simulator_config["save_video"]:
+        print("==> Save video")
+        video_path = os.path.join(results_dir, "video.mp4")
+        media.write_video(video_path, video_frames, fps=1/dt)
 
     print("==> Done!")

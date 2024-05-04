@@ -6,7 +6,7 @@
   <visual>
     <headlight diffuse="0.6 0.6 0.6" ambient="0.3 0.3 0.3" specular="0 0 0"/>
     <rgba haze="0.15 0.25 0.35 1"/>
-    <global azimuth="-20" elevation="-20" ellipsoidinertia="true"/>
+    <global azimuth="130" elevation="-40" offwidth="1280" offheight="720"/>
   </visual>
 
   <asset>
@@ -20,9 +20,11 @@
     <light name="top" pos="0 0 5" mode="trackcom"/>
     <light pos="0 0 5" dir="0 0 -1" directional="true" cutoff="180" castshadow="false"/>
 
+    <!-- <camera name="fixed" pos="4.13175911 -4.92403877  8.16044443" quat="0.85165074 0.30997552 0.14454396 0.39713126" mode="fixed"/> -->
+    <camera name="fixed" pos="6.63413948 -3.83022222  6.9278761" quat="0.78488557 0.36599815 0.21130913 0.45315389" mode="fixed"/>
+
     <geom name="floor" size="10 10 0.05" type="plane" material="groundplane"/>
 
-    <!-- <geom type="cylinder" size="0.15 2" pos="0 -2 2" quat="0.9238795325112867 0.0 0.3826834323650898 0.0" rgba="1 0 0 1" contype="0" conaffinity="0"/> -->
     <geom type="cylinder" size="0.15 2" pos="0 -2 2" quat="0.9659258262890683 0.0 -0.25881904510252074 0.0" rgba=".5 .5 .5 1" contype="0" conaffinity="0"/>
 
     <geom type="ellipsoid" size="0.2 0.2 0.2" pos="0 -0.5 2.3" quat="1 0 0 0" rgba=".5 .5 .5 1" contype="0" conaffinity="0"/>
