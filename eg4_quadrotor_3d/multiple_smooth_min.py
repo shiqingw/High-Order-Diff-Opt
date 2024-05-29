@@ -12,7 +12,7 @@ import matplotlib
 matplotlib.use('Agg')  # Set the backend to 'Agg'
 
 from skydio_envs.skydio_mj_env import SkydioMuJocoEnv
-from cores.utils.utils import seed_everything, save_dict, load_dict, get_orthogonal_vector
+from cores.utils.utils import seed_everything, save_dict, load_dict
 from cores.utils.rotation_utils import np_get_quat_qw_first
 from cores.utils.control_utils import solve_LQR_tracking, solve_infinite_LQR
 from cores.utils.proxsuite_utils import init_proxsuite_qp
@@ -21,6 +21,7 @@ import diffOptHelper as DOC
 from cores.configuration.configuration import Configuration
 from scipy.spatial.transform import Rotation
 from cores.obstacle_collections.john_ellipsoid_collections import JohnEllipsoidCollections
+import mediapy as media
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -65,12 +66,16 @@ if __name__ == '__main__':
     cam_azimuth = simulator_config["cam_azimuth"]
     cam_elevation = simulator_config["cam_elevation"]
     cam_lookat = simulator_config["cam_lookat"]
+    image_height = simulator_config["image_height"]
+    image_width = simulator_config["image_width"]
     initial_pos = np.array(test_settings["initial_pos"], dtype=config.np_dtype)
     initial_quat = np.array(test_settings["initial_quat"], dtype=config.np_dtype)
     dt = system.delta_t
-    env = SkydioMuJocoEnv(xml_name="scene_circulate", cam_distance=cam_distance, cam_azimuth=cam_azimuth,
+    env = SkydioMuJocoEnv(xml_name="scene_multiple", cam_distance=cam_distance, cam_azimuth=cam_azimuth,
                           cam_elevation=cam_elevation, cam_lookat=cam_lookat, dt=dt)
     env.reset(initial_pos, np_get_quat_qw_first(initial_quat), np.zeros(3), np.zeros(3))
+    env.create_renderer(image_height, image_width)
+    camera_name = "fixed"
 
     # Quadrotor bounding ellipsoid
     bounding_ellipsoid_offset = np.array(test_settings["bounding_ellipsoid_offset"], config.np_dtype)
@@ -82,8 +87,8 @@ if __name__ == '__main__':
     obstacle_config = test_settings["obstacle_config"]
     n_obstacle = len(obstacle_config)
     obs_col = JohnEllipsoidCollections(3, n_obstacle, obstacle_config)
-    for i in range(n_obstacle):
-        env.add_visual_ellipsoid(obs_col.sizes[i], obs_col.centers[i], obs_col.Rs[i], [0,1,0,0.5])
+    # for i in range(n_obstacle):
+    #     env.add_visual_ellipsoid(obs_col.sizes[i], obs_col.centers[i], obs_col.Rs[i], [0,1,0,0.5])
 
     # Tracking control via LQR
     horizon = test_settings["horizon"]
@@ -154,7 +159,7 @@ if __name__ == '__main__':
     print("==> Define proxuite problem")
     n_CBF = obs_col.n_obsctacles
     n_controls = 4
-    cbf_qp = init_proxsuite_qp(n_v=n_controls, n_eq=0, n_in=n_controls+2*n_CBF)
+    cbf_qp = init_proxsuite_qp(n_v=n_controls, n_eq=0, n_in=n_controls+1)
 
     # Create records
     print("==> Create records")
@@ -164,17 +169,23 @@ if __name__ == '__main__':
     states[0,3:7] = initial_quat
     controls = np.zeros([horizon, system.n_controls], dtype=config.np_dtype)
     desired_controls = np.zeros([horizon, system.n_controls], dtype=config.np_dtype)
-    phi1s = np.zeros([horizon, n_CBF], dtype=config.np_dtype)
-    phi2s = np.zeros([horizon, n_CBF], dtype=config.np_dtype)
+    phi1s = np.zeros(horizon, dtype=config.np_dtype)
+    phi2s = np.zeros(horizon, dtype=config.np_dtype)
+    smooth_mins = np.zeros(horizon, dtype=config.np_dtype)
     cbf_values = np.zeros([horizon, n_CBF], dtype=config.np_dtype)
     time_cvxpy = np.zeros(horizon, dtype=config.np_dtype)
     time_diff_helper = np.zeros(horizon, dtype=config.np_dtype)
     time_cbf_qp = np.zeros(horizon, dtype=config.np_dtype)
     time_control_loop = np.zeros(horizon, dtype=config.np_dtype)
+
+    video_frames = []
     
     p_prev = states[0,0:3]
-    u_prev = u_traj[0,:]
     for i in range(horizon):
+        if simulator_config["save_video"]:
+            rgb_image = env.get_rgb_image(camera=camera_name)
+            video_frames.append(rgb_image)
+
         time_control_loop_start = time.time()
         state = states[i,:]
         P_BB = state[0:3] + bounding_ellipsoid_offset
@@ -187,17 +198,23 @@ if __name__ == '__main__':
         time_diff_helper_tmp = 0
         if CBF_config["active"]:
             # Matrices for the CBF-QP constraints
-            # Order of the consraints: [CBF1, ... , CBFn, u_lim_1, ..., u_lim_4, circulate_1, ..., circulate_n]
-            C = np.zeros([n_controls+2*n_CBF, n_controls], dtype=config.np_dtype)
-            lb = np.zeros(n_controls+2*n_CBF, dtype=config.np_dtype)
-            ub = np.zeros(n_controls+2*n_CBF, dtype=config.np_dtype)
-
+            C = np.zeros([n_controls+1, n_controls], dtype=config.np_dtype)
+            lb = np.zeros(n_controls+1, dtype=config.np_dtype)
+            ub = np.zeros(n_controls+1, dtype=config.np_dtype)
             CBF_tmp = np.zeros(n_CBF, dtype=config.np_dtype)
-            phi1_tmp = np.zeros(n_CBF, dtype=config.np_dtype)
-            phi2_tmp = np.zeros(n_CBF, dtype=config.np_dtype)
+            smooth_min_tmp = 0
+            phi1_tmp = 0
+            phi2_tmp = 0
+
+            all_h = np.zeros(n_CBF, dtype=config.np_dtype)
+            all_h_dx = np.zeros((n_CBF, system.n_states), dtype=config.np_dtype)
+            all_h_dxdx = np.zeros((n_CBF, system.n_states, system.n_states), dtype=config.np_dtype)
 
             for kk in range(n_CBF):
-                if distances[kk] < distance_threshold:
+                if distances[kk] >= distance_threshold:
+                    all_h[kk] = np.inf
+                    CBF_tmp[kk] = 0
+                else:
                     obs_coef_np = Qs[kk]
                     obs_pos_np = centers[kk]
                     time_diff_helper_tmp -= time.time()
@@ -205,7 +222,7 @@ if __name__ == '__main__':
                                         R_BB, obs_coef_np, obs_pos_np)
                     time_diff_helper_tmp += time.time()
                 
-                    CBF = alpha - alpha0
+                    h = alpha - alpha0
             
                     # Order of parameters in alpha_dx_tmp and alpha_dxdx_tmp: [qx, qy, qz, qw, x, y, z]
                     # Convert to the order of [x, y, z, qx, qy, qz, qw, vx, vy, vz, wx, wy, wz]
@@ -219,68 +236,53 @@ if __name__ == '__main__':
                     alpha_dxdx[0:3,3:7] = alpha_dxdx_tmp[4:7,0:4]
                     alpha_dxdx[3:7,0:3] = alpha_dxdx_tmp[0:4,4:7]
 
-                    drift = np.squeeze(system.drift(state)) # f(x), shape = (6,)
-                    actuation = system.actuation(state) # g(x), shape = (6,2)
-                    drift_jac = system.drift_jac(state) # df/dx, shape = (6,6)
+                    all_h[kk] = h
+                    all_h_dx[kk,:] = alpha_dx
+                    all_h_dxdx[kk,:,:] = alpha_dxdx
 
-                    phi1 = alpha_dx @ drift + gamma1 * CBF # scalar
-                    C[kk,:] = alpha_dx @ drift_jac @ actuation
-                    lb[kk] = -drift.T @ alpha_dxdx @ drift - alpha_dx @ drift_jac @ drift \
-                        - (gamma1+gamma2) * alpha_dx @ drift - gamma1 * gamma2 * CBF + compensation
-                    ub[kk] = np.inf
+            rho = 1
+            min_h = np.min(all_h)
+            indices = np.where(rho*(all_h - min_h) < 708)[0]
+            h_selected = all_h[indices]
+            h_dx_selected = all_h_dx[indices,:]
+            h_dxdx_selected = all_h_dxdx[indices,:,:]
+            alpha, alpha_dx, alpha_dxdx = DOC.getSmoothMinimumGradientAndHessian(rho, h_selected, h_dx_selected, h_dxdx_selected)
+            CBF = alpha - 1
 
-                    # Circulating constraints
-                    preferred_direction = np.array([1,0,0,0,0,0,0], dtype=config.np_dtype)
-                    alpha_dx_perb_tmp = get_orthogonal_vector(alpha_dx[0:7], preferred_direction)
-                    alpha_dx_pinv = np.linalg.pinv(alpha_dx[0:7][np.newaxis,:]) # shape = (7,1)
-                    alpha_dxdx_perb_tmp = alpha_dx_pinv @ alpha_dx_perb_tmp[np.newaxis,:] @ alpha_dxdx[0:7,0:7]
-                    
-                    alpha_dx_perb = np.zeros(system.n_states, dtype=config.np_dtype)
-                    alpha_dx_perb[0:7] = alpha_dx_perb_tmp
-                    alpha_dxdx_perb = np.zeros((system.n_states, system.n_states), dtype=config.np_dtype)
-                    alpha_dxdx_perb[0:7,0:7] = alpha_dxdx_perb_tmp
+            drift = np.squeeze(system.drift(state)) # f(x), shape = (6,)
+            actuation = system.actuation(state) # g(x), shape = (6,2)
+            drift_jac = system.drift_jac(state) # df/dx, shape = (6,6)
 
-                    gamma3 = 1
-                    offset = 1000
-                    gamma4 = 1
-                    phi1_perb = alpha_dx_perb @ drift - gamma3/(offset + CBF) # scalar
-                    C[n_CBF + n_controls + kk,:] = alpha_dx_perb @ drift_jac @ actuation
-                    lb[n_CBF + n_controls + kk] = -drift.T @ alpha_dxdx_perb @ drift - alpha_dx_perb @ drift_jac @ drift \
-                        - gamma3 * alpha_dx @ drift /(offset+CBF)**2 - gamma4 * phi1_perb
-                    ub[n_CBF + n_controls + kk] = np.inf
+            phi1 = alpha_dx @ drift + gamma1 * CBF # scalar
+            C[0,:] = alpha_dx @ drift_jac @ actuation
+            lb[0] = -drift.T @ alpha_dxdx @ drift - alpha_dx @ drift_jac @ drift \
+                - (gamma1+gamma2) * alpha_dx @ drift - gamma1 * gamma2 * CBF + compensation
+            ub[0] = np.inf
 
-                else:
-                    CBF = 0
-                    phi1 = 0
-
-                phi1_tmp[kk] = phi1
-                CBF_tmp[kk] = CBF
-
-            # Control limits
-            C[n_CBF:n_CBF+n_controls,:] = np.eye(n_controls, dtype=config.np_dtype)
-            lb[n_CBF:n_CBF+n_controls] = input_lb
-            ub[n_CBF:n_CBF+n_controls] = input_ub
-
-            # Update the CBF-QP
             H = np.diag([1,1,1,1]).astype(config.np_dtype)
             g = -H @ u_nominal
+            C[1:1+n_controls,:] = np.eye(n_controls, dtype=config.np_dtype)
+            lb[1:] = input_lb
+            ub[1:] = input_ub
             cbf_qp.update(H=H, g=g, C=C, l=lb, u=ub)
             time_cbf_qp_start = time.time()
             cbf_qp.solve()
             time_cbf_qp_end = time.time()
             u = cbf_qp.results.x
 
-            for kk in range(n_CBF):
-                phi2_tmp[kk] = C[kk,:] @ u - lb[kk]
             time_control_loop_end = time.time()
+            smooth_min_tmp = CBF
+            phi1_tmp = phi1
+            phi2_tmp = C[0,:] @ u - lb[0]
         else:
             u = u_nominal
             time_cbf_qp_start = 0
             time_cbf_qp_end = 0
             time_control_loop_end = time.time()
+            smooth_min_tmp = 0
             CBF_tmp = np.zeros(n_CBF, dtype=config.np_dtype)
-            phi1_tmp = np.zeros(n_CBF, dtype=config.np_dtype)
-            phi2_tmp = np.zeros(n_CBF, dtype=config.np_dtype)
+            phi1_tmp = 0
+            phi2_tmp = 0
 
         # Step the environment
         new_state = system.get_next_state(state, u)
@@ -295,15 +297,15 @@ if __name__ == '__main__':
         radius=.003*(1+speed)
         env.add_visual_capsule(p_prev, p_new, radius, rgba, id_geom_offset, True)
         p_prev = p_new
-        u_prev = u
 
         # Record
         states[i+1,:] = new_state
         controls[i,:] = u
         desired_controls[i,:] = u_nominal
         cbf_values[i,:] = CBF_tmp
-        phi1s[i,:] = phi1_tmp
-        phi2s[i,:] = phi2_tmp
+        phi1s[i] = phi1_tmp
+        phi2s[i] = phi2_tmp
+        smooth_mins[i] = smooth_min_tmp
         time_diff_helper[i] = time_diff_helper_tmp
         time_cbf_qp[i] = time_cbf_qp_end - time_cbf_qp_start
         time_control_loop[i] = time_control_loop_end - time_control_loop_start
@@ -384,15 +386,22 @@ if __name__ == '__main__':
         plt.savefig(os.path.join(results_dir, 'plot_controls_{:d}.pdf'.format(i+1)))
         plt.close(fig)
 
-    for i in range(n_CBF):
-        fig, ax = plt.subplots(figsize=(10,8), dpi=config.dpi, frameon=True)
-        plt.plot(times[0:horizon], phi1s[:,i], label="phi1")
-        plt.plot(times[0:horizon], phi2s[:,i], label="phi2")
-        plt.axhline(y = 0.0, color = 'black', linestyle = 'dotted', linewidth = 2)
-        plt.legend()
-        plt.tight_layout()
-        plt.savefig(os.path.join(results_dir, 'plot_phi_{:d}.pdf'.format(i+1)))
-        plt.close(fig)
+    fig, ax = plt.subplots(figsize=(10,8), dpi=config.dpi, frameon=True)
+    plt.plot(times[0:horizon], phi1s, label="phi1")
+    plt.plot(times[0:horizon], phi2s, label="phi2")
+    plt.axhline(y = 0.0, color = 'black', linestyle = 'dotted', linewidth = 2)
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(os.path.join(results_dir, 'plot_phi.pdf'))
+    plt.close(fig)
+
+    fig, ax = plt.subplots(figsize=(10,8), dpi=config.dpi, frameon=True)
+    plt.plot(times[0:horizon], smooth_mins, label="smooth_mins")
+    plt.axhline(y = 0.0, color = 'black', linestyle = 'dotted', linewidth = 2)
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(os.path.join(results_dir, 'plot_smooth_mins.pdf'))
+    plt.close(fig)
     
     for i in range(n_CBF):
         fig, ax = plt.subplots(figsize=(10,8), dpi=config.dpi, frameon=True)
@@ -436,5 +445,11 @@ if __name__ == '__main__':
     print("==> CVXPY solving time: {:.5f} s".format(np.mean(time_cvxpy)))
     print("==> Diff helper solving time: {:.5f} s".format(np.mean(time_diff_helper)))
     print("==> CBF-QP solving time: {:.5f} s".format(np.mean(time_cbf_qp)))
+
+    # Save video
+    if simulator_config["save_video"]:
+        print("==> Save video")
+        video_path = os.path.join(results_dir, "video.mp4")
+        media.write_video(video_path, video_frames, fps=1/dt)
 
     print("==> Done!")
