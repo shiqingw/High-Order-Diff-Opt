@@ -25,7 +25,7 @@ import mediapy as media
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--exp_num', default=3, type=int, help='test case number')
+    parser.add_argument('--exp_num', default=4, type=int, help='test case number')
     args = parser.parse_args()
 
     # Create result directory
@@ -71,7 +71,7 @@ if __name__ == '__main__':
     initial_pos = np.array(test_settings["initial_pos"], dtype=config.np_dtype)
     initial_quat = np.array(test_settings["initial_quat"], dtype=config.np_dtype)
     dt = system.delta_t
-    env = SkydioMuJocoEnv(xml_name="scene_multiple", cam_distance=cam_distance, cam_azimuth=cam_azimuth,
+    env = SkydioMuJocoEnv(xml_name="scene_circulate", cam_distance=cam_distance, cam_azimuth=cam_azimuth,
                           cam_elevation=cam_elevation, cam_lookat=cam_lookat, dt=dt)
     env.reset(initial_pos, np_get_quat_qw_first(initial_quat), np.zeros(3), np.zeros(3))
     env.create_renderer(image_height, image_width)
@@ -159,7 +159,7 @@ if __name__ == '__main__':
     print("==> Define proxuite problem")
     n_CBF = obs_col.n_obsctacles
     n_controls = 4
-    cbf_qp = init_proxsuite_qp(n_v=n_controls, n_eq=0, n_in=n_controls+1)
+    cbf_qp = init_proxsuite_qp(n_v=n_controls, n_eq=0, n_in=n_controls+2)
 
     # Create records
     print("==> Create records")
@@ -198,9 +198,9 @@ if __name__ == '__main__':
         time_diff_helper_tmp = 0
         if CBF_config["active"]:
             # Matrices for the CBF-QP constraints
-            C = np.zeros([n_controls+1, n_controls], dtype=config.np_dtype)
-            lb = np.zeros(n_controls+1, dtype=config.np_dtype)
-            ub = np.zeros(n_controls+1, dtype=config.np_dtype)
+            C = np.zeros([n_controls+2, n_controls], dtype=config.np_dtype)
+            lb = np.zeros(n_controls+2, dtype=config.np_dtype)
+            ub = np.zeros(n_controls+2, dtype=config.np_dtype)
             CBF_tmp = np.zeros(n_CBF, dtype=config.np_dtype)
             smooth_min_tmp = 0
             phi1_tmp = 0
@@ -240,14 +240,14 @@ if __name__ == '__main__':
                     all_h_dx[kk,:] = alpha_dx
                     all_h_dxdx[kk,:,:] = alpha_dxdx
 
-            rho = 1
+            rho = 2
             min_h = np.min(all_h)
             indices = np.where(rho*(all_h - min_h) < 708)[0]
             h_selected = all_h[indices]
             h_dx_selected = all_h_dx[indices,:]
             h_dxdx_selected = all_h_dxdx[indices,:,:]
             alpha, alpha_dx, alpha_dxdx = DOC.getSmoothMinimumGradientAndHessian(rho, h_selected, h_dx_selected, h_dxdx_selected)
-            CBF = alpha - 1.5
+            CBF = alpha - 1
 
             drift = np.squeeze(system.drift(state)) # f(x), shape = (6,)
             actuation = system.actuation(state) # g(x), shape = (6,2)
@@ -258,12 +258,18 @@ if __name__ == '__main__':
             lb[0] = -drift.T @ alpha_dxdx @ drift - alpha_dx @ drift_jac @ drift \
                 - (gamma1+gamma2) * alpha_dx @ drift - gamma1 * gamma2 * CBF + compensation
             ub[0] = np.inf
+            
+            tmp = np.array([C[0,1], 0.0, -C[0,0], 0.0]).astype(config.np_dtype)
+            C[1,:] = tmp
+            # lb[1] = C[1,:] @ system.ueq + 0.1*(1-np.exp(CBF-4))
+            lb[1] = C[1,:] @ system.ueq + 0.1 - 100*CBF
+            ub[1] = np.inf
 
             H = np.diag([1,1,1,1]).astype(config.np_dtype)
             g = -H @ u_nominal
-            C[1:,:] = np.eye(n_controls, dtype=config.np_dtype)
-            lb[1:] = input_lb
-            ub[1:] = input_ub
+            C[2:,:] = np.eye(n_controls, dtype=config.np_dtype)
+            lb[2:] = input_lb
+            ub[2:] = input_ub
             cbf_qp.update(H=H, g=g, C=C, l=lb, u=ub)
             time_cbf_qp_start = time.time()
             cbf_qp.solve()
@@ -274,6 +280,8 @@ if __name__ == '__main__':
             smooth_min_tmp = CBF
             phi1_tmp = phi1
             phi2_tmp = C[0,:] @ u - lb[0]
+
+            print(C[0,:] @ u - lb[0], C[1,:] @ u - lb[1])
         else:
             u = u_nominal
             time_cbf_qp_start = 0

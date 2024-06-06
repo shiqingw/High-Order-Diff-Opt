@@ -95,48 +95,56 @@ if __name__ == '__main__':
     t_traj = np.linspace(0, t_final, horizon+1)
     
     ####### Ellipse trajectory #######
-    angular_vel_traj = 0.4
-    semi_major_axis = 2
-    semi_minor_axis = 1
-    initial_phase = -np.pi/4
-    traj_center = np.array([0,0,2])
+    # angular_vel_traj = 0.4
+    # semi_major_axis = 2
+    # semi_minor_axis = 1
+    # initial_phase = -np.pi/4
+    # traj_center = np.array([0,0,2])
+    # ######## Visualize the trajectory #######
+    # N = 100
+    # thetas = np.linspace(0, 2*np.pi, N)
+    # traj_ellipse = np.zeros([N, 3], dtype=config.np_dtype)
+    # traj_ellipse[:,0] = traj_center[0] + semi_major_axis * np.sin(thetas)
+    # traj_ellipse[:,1] = traj_center[1] + semi_minor_axis * np.cos(thetas)
+    # traj_ellipse[:,2] = traj_center[2]
+    # for i in range(N-1):
+    #     env.add_visual_capsule(traj_ellipse[i], traj_ellipse[i+1], 0.004, np.array([0,0,1,1]))
+    #     env.viewer.sync()
+    # id_geom_offset = env.viewer.user_scn.ngeom 
+    ######## Compute the trajectory #######
+    # x_traj[:,0] = semi_major_axis * np.cos(angular_vel_traj*t_traj + initial_phase) + traj_center[0] # x
+    # x_traj[:,1] = semi_minor_axis * np.sin(angular_vel_traj*t_traj + initial_phase) + traj_center[1] # y
+    # x_traj[:,2] = traj_center[2] # z
+    # x_traj[:,3:7] = np.array([0,0,0,1], dtype=config.np_dtype)
+    # x_traj[:,7] = -semi_major_axis * angular_vel_traj * np.sin(angular_vel_traj*t_traj) # xdot
+    # x_traj[:,8] = semi_minor_axis * angular_vel_traj * np.cos(angular_vel_traj*t_traj) # ydot
 
+    # u_traj = np.zeros([horizon, system.n_controls])
+    # u_traj[:,0] = system.gravity * np.ones(u_traj.shape[0])
+
+    ####### Striaght line trajectory #######
+    start_point = np.array([0,0,0], dtype=config.np_dtype)
+    end_point = np.array([0,0,5], dtype=config.np_dtype)
     ######## Visualize the trajectory #######
     N = 100
-    thetas = np.linspace(0, 2*np.pi, N)
-    traj_ellipse = np.zeros([N, 3], dtype=config.np_dtype)
-    traj_ellipse[:,0] = traj_center[0] + semi_major_axis * np.sin(thetas)
-    traj_ellipse[:,1] = traj_center[1] + semi_minor_axis * np.cos(thetas)
-    traj_ellipse[:,2] = traj_center[2]
+    thetas = np.linspace(0, 1, N)
+    traj = start_point + thetas[:,None] * (end_point - start_point)
     for i in range(N-1):
-        env.add_visual_capsule(traj_ellipse[i], traj_ellipse[i+1], 0.004, np.array([0,0,1,1]))
+        env.add_visual_capsule(traj[i], traj[i+1], 0.004, np.array([0,0,1,1]))
         env.viewer.sync()
     id_geom_offset = env.viewer.user_scn.ngeom 
-
-    ######## Compute the trajectory #######
-    x_traj[:,0] = semi_major_axis * np.cos(angular_vel_traj*t_traj + initial_phase) + traj_center[0] # x
-    x_traj[:,1] = semi_minor_axis * np.sin(angular_vel_traj*t_traj + initial_phase) + traj_center[1] # y
-    x_traj[:,2] = traj_center[2] # z
-    x_traj[:,3:7] = np.array([0,0,0,1], dtype=config.np_dtype)
-    x_traj[:,7] = -semi_major_axis * angular_vel_traj * np.sin(angular_vel_traj*t_traj) # xdot
-    x_traj[:,8] = semi_minor_axis * angular_vel_traj * np.cos(angular_vel_traj*t_traj) # ydot
+    ####### Striaght line trajectory #######
+    linear_vel = (end_point - start_point)/t_final
+    x_traj[:,0] = start_point[0] + linear_vel[0] * t_traj
+    x_traj[:,1] = start_point[1] + linear_vel[1] * t_traj
+    x_traj[:,2] = start_point[2] + linear_vel[2] * t_traj
+    x_traj[:,3:7] = np.array([0.0, 0.0, -np.sqrt(2), np.sqrt(2)], dtype=config.np_dtype)
+    x_traj[:,7] = linear_vel[0] * np.ones(x_traj.shape[0])
+    x_traj[:,8] = linear_vel[1] * np.ones(x_traj.shape[0])
+    x_traj[:,9] = linear_vel[2] * np.ones(x_traj.shape[0])
 
     u_traj = np.zeros([horizon, system.n_controls])
     u_traj[:,0] = system.gravity * np.ones(u_traj.shape[0])
-
-    ####### Striaght line trajectory #######
-    # x_vel = 1
-    # y_vel = 1
-    # z_vel = 1
-    # x_traj[:,0] = x_vel * t_traj
-    # x_traj[:,1] = y_vel * t_traj
-    # x_traj[:,2] = z_vel * t_traj + 0.2
-    # x_traj[:,6] = np.ones(x_traj.shape[0])
-    # x_traj[:,8] = x_vel * np.ones(x_traj.shape[0])
-    # x_traj[:,9] = y_vel * np.ones(x_traj.shape[0])
-    # x_traj[:,10] = z_vel * np.ones(x_traj.shape[0])
-    # u_traj = np.zeros([horizon, system.n_controls])
-    # u_traj[:,0] = system.gravity * np.ones(u_traj.shape[0])
 
     A_list = np.empty((horizon, system.n_states, system.n_states))
     B_list = np.empty((horizon, system.n_states, system.n_controls))
@@ -147,7 +155,7 @@ if __name__ == '__main__':
     Q_pos = [10,10,10]
     Q_quat = [10,10,10,10]
     Q_v = [10,10,10]
-    Q_omega = [0,0,0]
+    Q_omega = [1,1,1]
     Q_lqr = np.diag(Q_pos+Q_quat+Q_v+Q_omega)
     Q_list = np.array([Q_lqr]*(horizon +1))
     R_lqr = np.diag([1,1,1,1])
@@ -171,7 +179,7 @@ if __name__ == '__main__':
     print("==> Define proxuite problem")
     n_CBF = 1
     n_controls = 4
-    cbf_qp = init_proxsuite_qp(n_v=n_controls, n_eq=0, n_in=n_controls+n_CBF)
+    cbf_qp = init_proxsuite_qp(n_v=n_controls, n_eq=0, n_in=n_controls+n_CBF+1)
 
     # Create records
     print("==> Create records")
@@ -201,9 +209,9 @@ if __name__ == '__main__':
         time_diff_helper_tmp = 0
         if CBF_config["active"]:
             # Matrices for the CBF-QP constraints
-            C = np.zeros([n_controls+n_CBF, n_controls], dtype=config.np_dtype)
-            lb = np.zeros(n_controls+n_CBF, dtype=config.np_dtype)
-            ub = np.zeros(n_controls+n_CBF, dtype=config.np_dtype)
+            C = np.zeros([n_controls+n_CBF+1, n_controls], dtype=config.np_dtype)
+            lb = np.zeros(n_controls+n_CBF+1, dtype=config.np_dtype)
+            ub = np.zeros(n_controls+n_CBF+1, dtype=config.np_dtype)
             CBF_tmp = np.zeros(n_CBF, dtype=config.np_dtype)
             phi1_tmp = np.zeros(n_CBF, dtype=config.np_dtype)
             phi2_tmp = np.zeros(n_CBF, dtype=config.np_dtype)
@@ -237,10 +245,17 @@ if __name__ == '__main__':
             lb[0] = -drift.T @ alpha_dxdx @ drift - alpha_dx @ drift_jac @ drift \
                 - (gamma1+gamma2) * alpha_dx @ drift - gamma1 * gamma2 * CBF + compensation
             ub[0] = np.inf
+
+            # tmp = np.array([C[0,1], -C[0,0], 0, 0]).astype(config.np_dtype)
+            tmp = np.array([C[0,2], 0, -C[0,0], 0]).astype(config.np_dtype)
+            C[1,:] = tmp
+            lb[1] = C[1,:] @ system.ueq + 0.1 - 10*CBF
+            ub[1] = np.inf
+
             g = -u_nominal
-            C[n_CBF:n_CBF+n_controls,:] = np.eye(n_controls, dtype=config.np_dtype)
-            lb[n_CBF:] = input_lb
-            ub[n_CBF:] = input_ub
+            C[n_CBF+1:n_CBF+1+n_controls,:] = np.eye(n_controls, dtype=config.np_dtype)
+            lb[n_CBF+1:] = input_lb
+            ub[n_CBF+1:] = input_ub
             cbf_qp.update(g=g, C=C, l=lb, u=ub)
             time_cbf_qp_start = time.time()
             cbf_qp.solve()

@@ -3,7 +3,7 @@
     "seed": 0,
     "horizon": 2000,
     "initial_pos": [0, -5, 0],
-    "initial_quat": [0, 0, 0, 1],
+    "initial_quat": [0, 0, -1, 1],
     "bounding_ellipsoid_offset": [0, 0, 0.09],
     "bounding_ellipsoid_size": [0.40, 0.40, 0.13],
 

@@ -4,7 +4,7 @@ from scipy.spatial.transform import Rotation
 from cores.configuration.configuration import Configuration
 config = Configuration()
 
-class JohnEllipsoidCollections:
+class JohnEllipsoidCollection:
     def __init__(self, dim, n_obsctacles, obs_dict):
         self.dim = dim
         self.n_obsctacles = n_obsctacles

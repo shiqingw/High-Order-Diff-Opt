@@ -20,7 +20,7 @@ from cores.dynamical_systems.create_system import get_system
 import diffOptHelper as DOC
 from cores.configuration.configuration import Configuration
 from scipy.spatial.transform import Rotation
-from cores.obstacle_collections.john_ellipsoid_collections import JohnEllipsoidCollections
+from cores.obstacle_collections.john_ellipsoid_collection import JohnEllipsoidCollection
 import mediapy as media
 
 if __name__ == '__main__':
@@ -86,7 +86,7 @@ if __name__ == '__main__':
     # Obstacle
     obstacle_config = test_settings["obstacle_config"]
     n_obstacle = len(obstacle_config)
-    obs_col = JohnEllipsoidCollections(3, n_obstacle, obstacle_config)
+    obs_col = JohnEllipsoidCollection(3, n_obstacle, obstacle_config)
     # for i in range(n_obstacle):
     #     env.add_visual_ellipsoid(obs_col.sizes[i], obs_col.centers[i], obs_col.Rs[i], [0,1,0,0.5])
 
@@ -116,7 +116,7 @@ if __name__ == '__main__':
     x_traj[:,0] = start_point[0] + linear_vel[0] * t_traj
     x_traj[:,1] = start_point[1] + linear_vel[1] * t_traj
     x_traj[:,2] = start_point[2] + linear_vel[2] * t_traj
-    x_traj[:,3:7] = np.array([0.0, 0.0, 0.0, 1.0], dtype=config.np_dtype)
+    x_traj[:,3:7] = np.array([0.0, 0.0, -np.sqrt(2), np.sqrt(2)], dtype=config.np_dtype)
     x_traj[:,7] = linear_vel[0] * np.ones(x_traj.shape[0])
     x_traj[:,8] = linear_vel[1] * np.ones(x_traj.shape[0])
     x_traj[:,9] = linear_vel[2] * np.ones(x_traj.shape[0])

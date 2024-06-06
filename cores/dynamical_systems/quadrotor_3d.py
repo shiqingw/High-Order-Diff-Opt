@@ -16,6 +16,7 @@ class Quadrotor3D():
         self.inertia = np.diag(params_dict['inertia'])
         self.gravity = params_dict['gravity']
         self.delta_t = params_dict['delta_t']
+        self.ueq = np.array([self.gravity, 0., 0., 0.])
 
         x, y, z, vx, vy, vz = sp.symbols('x y z vx vy vz')
         qx, qy, qz, qw, wx, wy, wz = sp.symbols('qx qy qz qw wx wy wz')
