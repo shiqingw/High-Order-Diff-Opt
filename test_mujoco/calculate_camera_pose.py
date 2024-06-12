@@ -36,7 +36,7 @@ def calculate_camera_position_orientation(cam_distance, cam_azimuth, cam_elevati
 cam_distance = 10.0
 cam_azimuth = 150
 cam_elevation = -40
-cam_lookat = np.array([0.0, 0.0, 0.5])
+cam_lookat = np.array([0.0, 0.0, 2.0])
 
 camera_pos, quat = calculate_camera_position_orientation(cam_distance, cam_azimuth, cam_elevation, cam_lookat)
 print(f"Camera Position: {camera_pos}")

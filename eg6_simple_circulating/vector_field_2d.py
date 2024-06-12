@@ -12,15 +12,15 @@ from cores.configuration.configuration import Configuration
 
 config = Configuration()
 
-circulation = False
+circulation = True
 
-obstacle_center = np.array([-1.0, 0.0])
+obstacle_center = np.array([-0.8, 0.0])
 obstacle_a = 1.5
-obstacle_b = 3
+obstacle_b = 2
 obstacle_matrix = np.diag([1.0/obstacle_a**2, 1.0/obstacle_b**2])
 obstacle_func = lambda x: (x - obstacle_center) @ obstacle_matrix @ (x - obstacle_center) - 1.0
 
-robot_r = 1
+robot_r = 0.5
 robot_D = np.diag([1.0/robot_r**2, 1.0/robot_r**2])
 
 target_point = np.array([7.0, 0.0])
@@ -28,7 +28,7 @@ target_point = np.array([7.0, 0.0])
 cbf_qp = init_proxsuite_qp(2, 0, 2)
 gamma1 = 1.0
 gamma2 = 1.0
-offset = 0.5
+offset = 1.0
 inclination = 1.0
 
 dt = 0.01
@@ -36,7 +36,7 @@ t = 0
 kp = 20
 kd = 40
 times = []
-state = np.array([-6, 0.0, 0.0, 0.0])
+state = np.array([-7, 0.0, 0.0, 0.0])
 states = []
 
 while np.linalg.norm(state[:2] - target_point) >= 1e-1 and t < 100:
@@ -50,7 +50,7 @@ while np.linalg.norm(state[:2] - target_point) >= 1e-1 and t < 100:
     R = np.eye(2)
     alpha, _, grad, hess = doh.getGradientAndHessianEllipses(p, theta, robot_D, R, obstacle_matrix, obstacle_center)
     
-    h = alpha - 1.1
+    h = alpha - 1.2
     h_dp = grad[1:3]
     h_dpdp = hess[1:3,1:3]
 
@@ -90,7 +90,12 @@ while np.linalg.norm(state[:2] - target_point) >= 1e-1 and t < 100:
 
     t += dt
 
-x, y = np.meshgrid(np.linspace(-8, 8, 31), np.linspace(-6, 6, 21)) 
+x_min, x_max = -10, 10
+y_min, y_max = -5, 5
+spacing = 0.5
+x = np.arange(x_min, x_max, spacing)
+y = np.arange(y_min, y_max, spacing)
+x, y = np.meshgrid(x, y) 
 
 x_flatten = x.flatten()
 y_flatten = y.flatten()
@@ -109,7 +114,7 @@ for i in range(len(x_flatten)):
     R = np.eye(2)
     alpha, _, grad, hess = doh.getGradientAndHessianEllipses(p, theta, robot_D, R, obstacle_matrix, obstacle_center)
     
-    h = alpha - 1.1
+    h = alpha - 1.2
 
     if h < 0:
         continue
@@ -173,7 +178,7 @@ tick_fs = 30
 legend_fs = 30
 linewidth = 5
 
-fig, ax = plt.subplots(figsize=(8,6), dpi=config.dpi, frameon=True)
+fig, ax = plt.subplots(figsize=(8,4), dpi=config.dpi, frameon=True)
 ax.quiver(x, y, a_x, a_y, color='g')
 ax.axis('equal')
 
@@ -200,8 +205,13 @@ if circulation:
         ax.add_patch(robot)
 
 else:
-    plt.plot(states[:,0], states[:,1], color='k', zorder=0.9)
-    indices = [0, len(states)-1]
+    plt.plot(states[:,0], states[:,1], color='k', linestyle=":", zorder=0.9)
+    indices = [0]
+    for i in range(1, len(states)):
+        if np.linalg.norm(states[i,:2] - states[indices[-1],:2]) > 2*robot_r and i != len(states)-1:
+            indices.append(i)
+    indices.append(len(states)-1)
+
     for i in indices:
         state = states[i]
         robot = plt.Circle(state[:2], robot_r, edgecolor='k', facecolor="None", linestyle='--')
@@ -212,6 +222,8 @@ plt.xlabel('$x$', fontsize=label_fs)
 plt.ylabel('$y$', fontsize=label_fs)
 plt.xticks(fontsize = tick_fs)
 plt.yticks(fontsize = tick_fs)
+plt.xlim(-7, 7)
+plt.ylim(-3, 3)
 plt.tight_layout()
 results_dir = "{}/eg6_results".format(str(Path(__file__).parent.parent))
 if circulation:

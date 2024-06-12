@@ -16,9 +16,9 @@ def get_line(point1, point2):
 #                         "text.latex.preamble": r"\usepackage{amsmath}"})
 # plt.rcParams.update({'pdf.fonttype': 42})
 
-# # kappa, n = 4, 20
+# kappa, n = 4, 20
 # # kappa, n = 6, 20
-# kappa, n = 10, 20
+# # kappa, n = 10, 20
 # n_ineq = 6
 # aprox_exp = lambda x: np.exp(kappa*x)
 # aprox_cube = lambda x,y,z : np.log((aprox_exp(-x) + aprox_exp(x-1) + aprox_exp(-y) + aprox_exp(y-1) + aprox_exp(-z) + aprox_exp(z-1))/n_ineq)+1.0
@@ -49,7 +49,8 @@ def get_line(point1, point2):
 # verts[:, 0] = verts[:, 0] + xmin
 # verts[:, 1] = verts[:, 1] + ymin
 # verts[:, 2] = verts[:, 2] + zmin
-# ax.plot_trisurf(verts[:, 0], verts[:, 1], faces, verts[:, 2], color='cornflowerblue', alpha=0.7, lw=0, shade=True)
+# # ax.plot_trisurf(verts[:, 0], verts[:, 1], faces, verts[:, 2], color='cornflowerblue', alpha=0.7, lw=0, shade=True)
+# ax.plot_trisurf(verts[:, 0], verts[:, 1], faces, verts[:, 2], cmap='magma', alpha=0.7, edgecolor='none', lw=0.0, shade=True)
 
 # # Add labels and title
 # # label_fontsize = 20
@@ -87,8 +88,8 @@ plt.rcParams.update({"text.usetex": True,
                         "text.latex.preamble": r"\usepackage{amsmath}"})
 plt.rcParams.update({'pdf.fonttype': 42})
 
-# kappa, n = 4, 40
-kappa, n = 6, 60
+kappa, n = 4, 40
+# kappa, n = 6, 60
 # kappa, n = 10, 60
 n_ineq = 4
 aprox_exp = lambda x: np.exp(kappa*x)
@@ -121,7 +122,8 @@ verts, faces, normals, values = measure.marching_cubes(values, level=1, spacing=
 verts[:, 0] = verts[:, 0] + xmin
 verts[:, 1] = verts[:, 1] + ymin
 verts[:, 2] = verts[:, 2] + zmin
-ax.plot_trisurf(verts[:, 0], verts[:, 1], faces, verts[:, 2], color='cornflowerblue', alpha=0.7, lw=0, shade=True)
+ax.plot_trisurf(verts[:, 0], verts[:, 1], faces, verts[:, 2], cmap='magma', alpha=0.7, edgecolor='none', lw=0.0, shade=True)
+# ax.plot_trisurf(verts[:, 0], verts[:, 1], faces, verts[:, 2], color='cornflowerblue', alpha=0.7, lw=0, shade=True)
 
 # Set the tick size for each axis
 tickfontsize = 20

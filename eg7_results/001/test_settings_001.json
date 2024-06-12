@@ -1,0 +1,52 @@
+{
+    "system_name": "Quadrotor3D",
+    "seed": 0,
+    "horizon": 2000,
+    "initial_pos": [0, 0, 0],
+    "initial_quat": [0, 0, -1, 1],
+    "bounding_ellipsoid_offset": [0, 0, 0.09],
+    "bounding_ellipsoid_size": [0.40, 0.40, 0.13],
+
+    "input_limits_config":{
+        "lb":[-100, -100, -100, -100],
+        "ub":[100, 100, 100, 100]
+    },
+
+    "simulator_config":{
+        "cam_distance": 10.0, 
+        "cam_azimuth": 150,
+        "cam_elevation": -40,
+        "cam_lookat": [0.0, 0.0, 0.5],
+        "image_height": 720,
+        "image_width": 1280,
+        "save_video": 0
+    },
+
+    "trajectory_config":{},
+
+    "controller_config":{},
+
+    "obstacle_config":{
+        "obs1":{
+            "type": "polytope",
+            "vertices": [[0, 0, 0], [0.4, 0, 0], [0.4, 1.2, 0], [0, 1.2, 0], [0, 0, 0.4], [0.4, 0, 0.4], [0.4, 1.2, 0.4], [0, 1.2, 0.4]],
+            "pos": [0, 0, 2],
+            "quat": [0, 0, 0, 1]
+        }
+    },
+
+    "CBF_config":{
+        "active": 1,
+        "distance_threshold": 5,
+        "alpha0": 1.5,
+        "gamma1": 2.0,
+        "gamma2": 5.0,
+        "compensation": 0.1
+    },
+
+    "cvxpy_config":{
+        "solver": "ECOS",
+        "obstacle_kappa": 10,
+        "x_max": 10
+    }
+}

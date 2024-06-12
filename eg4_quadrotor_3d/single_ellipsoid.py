@@ -246,8 +246,8 @@ if __name__ == '__main__':
                 - (gamma1+gamma2) * alpha_dx @ drift - gamma1 * gamma2 * CBF + compensation
             ub[0] = np.inf
 
-            # tmp = np.array([C[0,1], -C[0,0], 0, 0]).astype(config.np_dtype)
-            tmp = np.array([C[0,2], 0, -C[0,0], 0]).astype(config.np_dtype)
+            # tmp = np.array([C[0,2], 0, -C[0,0], 0]).astype(config.np_dtype)
+            tmp = np.array([C[0,2], 0.01*C[0,3], -C[0,0], -0.01*C[0,1]]).astype(config.np_dtype)
             C[1,:] = tmp
             lb[1] = C[1,:] @ system.ueq + 0.1 - 10*CBF
             ub[1] = np.inf

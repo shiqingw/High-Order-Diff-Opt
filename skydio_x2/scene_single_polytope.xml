@@ -14,19 +14,20 @@
     <texture type="2d" name="groundplane" builtin="checker" mark="edge" rgb1="0.2 0.3 0.4" rgb2="0.1 0.2 0.3"
       markrgb="0.8 0.8 0.8" width="300" height="300"/>
     <material name="groundplane" texture="groundplane" texuniform="true" texrepeat="5 5" reflectance="0.2"/>
-    <mesh name="tetrahedron" vertex="0 0 0  1 0 0  0 1 0  0 0 1"/>
+    <mesh name="tetrahedron" vertex="0 0 0  0.4 0 0  0.4 1.2 0  0 1.2 0  0 0 0.4  0.4 0 0.4  0.4 1.2 0.4  0 1.2 0.4"/>
   </asset>
 
   <worldbody>
-    <light name="top" pos="0 0 5" mode="trackcom"/>
-    <light pos="0 0 5" dir="0 0 -1" directional="true" cutoff="180" castshadow="false"/>
+    <!-- <light name="top" pos="0 0 5" mode="trackcom"/> -->
+    <light pos="0 0 10" dir="0 0 -1" directional="true" cutoff="180" castshadow="false"/>
 
     <camera name="fixed" pos="6.63413948 -3.83022222  6.9278761" quat="0.78488557 0.36599815 0.21130913 0.45315389" mode="fixed"/>
 
     <geom name="floor" size="10 10 0.05" type="plane" material="groundplane"/>
 
-    <geom type="mesh" mesh="tetrahedron" rgba="0.5 0.5 0.5 1" contype="0" conaffinity="0"/>
-
-    <!-- <geom type="ellipsoid" size="1.4 1.4 1.0" pos="0 0 2" quat="0 0 0 1" rgba="1 0 0 1" contype="0" conaffinity="0"/> -->
+    <geom type="mesh" mesh="tetrahedron" pos="0 0 2" quat="1 0 0 0" rgba="0.5 0.5 0.5 1" contype="0" conaffinity="0"/>
+    <!-- <geom type="mesh" mesh="tetrahedron" pos="0 0 2" quat="1 0 0 1" rgba="0.5 0.5 0.5 1" contype="0" conaffinity="0"/>
+    <geom type="mesh" mesh="tetrahedron" pos="0 0 2" quat="0 0 0 1" rgba="0.5 0.5 0.5 1" contype="0" conaffinity="0"/>
+    <geom type="mesh" mesh="tetrahedron" pos="0 0 2" quat="1 0 0 -1" rgba="0.5 0.5 0.5 1" contype="0" conaffinity="0"/> -->
   </worldbody>
 </mujoco>

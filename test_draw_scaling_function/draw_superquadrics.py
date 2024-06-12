@@ -11,7 +11,7 @@ plt.rcParams.update({"text.usetex": True,
 plt.rcParams.update({'pdf.fonttype': 42})
 
 e1 = 1.5
-e2 = 0.5
+e2 = 0.1
 a1 = 1.0
 a2 = 1.0
 a3 = 1.0
@@ -36,7 +36,9 @@ verts, faces, normals, values = measure.marching_cubes(values, level=1, spacing=
 verts[:, 0] = verts[:, 0] + xmin
 verts[:, 1] = verts[:, 1] + ymin
 verts[:, 2] = verts[:, 2] + zmin
-ax.plot_trisurf(verts[:, 0], verts[:, 1], faces, verts[:, 2], color='cornflowerblue', alpha=1.0, lw=0, shade=True)
+
+# ax.plot_trisurf(verts[:, 0], verts[:, 1], faces, verts[:, 2], color='cornflowerblue', alpha=1.0, lw=0, shade=True)
+ax.plot_trisurf(verts[:, 0], verts[:, 1], faces, verts[:, 2], cmap='magma', alpha=1.0, edgecolor='none', lw=0.0, shade=True)
 
 
 # Add labels and title

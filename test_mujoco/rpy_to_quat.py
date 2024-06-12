@@ -3,8 +3,8 @@ import numpy as np
 
 # RPY angles in radians
 roll = 0
-pitch = np.pi
-yaw = -np.pi/2
+pitch = 0
+yaw = np.pi/2*3
 
 # Create a Rotation object from RPY
 rotation = Rotation.from_euler('xyz', [roll, pitch, yaw])

@@ -53,6 +53,7 @@ class JohnEllipsoidCollection:
             size = np.array(obs["size"], dtype=config.np_dtype)
             c = np.array(obs["pos"], dtype=config.np_dtype)
             quat = np.array(obs["quat"], dtype=config.np_dtype)
+            quat = quat / np.linalg.norm(quat)
             points = np.array([[1, 1, 1],
                                  [1, 1, -1],
                                  [1, -1, 1],
