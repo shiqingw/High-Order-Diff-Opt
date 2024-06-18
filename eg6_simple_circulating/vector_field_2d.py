@@ -14,16 +14,16 @@ config = Configuration()
 
 circulation = True
 
-obstacle_center = np.array([-0.8, 0.0])
-obstacle_a = 1.5
-obstacle_b = 2
+obstacle_center = np.array([0.0, -0.8])
+obstacle_a = 2
+obstacle_b = 1.5
 obstacle_matrix = np.diag([1.0/obstacle_a**2, 1.0/obstacle_b**2])
 obstacle_func = lambda x: (x - obstacle_center) @ obstacle_matrix @ (x - obstacle_center) - 1.0
 
 robot_r = 0.5
 robot_D = np.diag([1.0/robot_r**2, 1.0/robot_r**2])
 
-target_point = np.array([7.0, 0.0])
+target_point = np.array([0.0, 5.0])
 
 cbf_qp = init_proxsuite_qp(2, 0, 2)
 gamma1 = 1.0
@@ -36,10 +36,10 @@ t = 0
 kp = 20
 kd = 40
 times = []
-state = np.array([-7, 0.0, 0.0, 0.0])
+state = np.array([0.0, -5.0, 0.0, 0.0])
 states = []
 
-while np.linalg.norm(state[:2] - target_point) >= 1e-1 and t < 100:
+while np.linalg.norm(state[:2] - target_point) >= 1e-2 and t < 100:
     states.append(np.copy(state))
     times.append(t)
 
@@ -90,8 +90,8 @@ while np.linalg.norm(state[:2] - target_point) >= 1e-1 and t < 100:
 
     t += dt
 
-x_min, x_max = -10, 10
-y_min, y_max = -5, 5
+x_min, x_max = -4, 4
+y_min, y_max = -10, 10
 spacing = 0.5
 x = np.arange(x_min, x_max, spacing)
 y = np.arange(y_min, y_max, spacing)
@@ -173,26 +173,29 @@ plt.rcParams.update({"text.usetex": True,
                         "text.latex.preamble": r"\usepackage{amsmath}"})
 plt.rcParams.update({'pdf.fonttype': 42})
 
-label_fs = 30
-tick_fs = 30
+label_fs = 20
+tick_fs = 20
 legend_fs = 30
 linewidth = 5
 
-fig, ax = plt.subplots(figsize=(8,4), dpi=config.dpi, frameon=True)
-ax.quiver(x, y, a_x, a_y, color='g')
+fig, ax = plt.subplots(figsize=(4,6), dpi=config.dpi, frameon=True)
+ax.quiver(x, y, a_x, a_y, color='#2F9E44', scale=6, scale_units='inches', width=0.005, zorder=0.1)
 ax.axis('equal')
 
-obstacle = Ellipse(obstacle_center, 2*obstacle_a, 2*obstacle_b, edgecolor='k', facecolor='cornflowerblue')
+obstacle = Ellipse(obstacle_center, 2*obstacle_a, 2*obstacle_b, edgecolor='#1971C2', facecolor='#74C0FC', linewidth=3)
 ax.add_patch(obstacle)
 
-target = plt.Circle(target_point, 0.1, color='r')
-ax.add_patch(target)
+# target = plt.Circle(target_point, 0.1, color='r')
+# ax.add_patch(target)
 
-start = plt.Circle(states[0,0:2], 0.1, color='b')
-ax.add_patch(start)
+# start = plt.Circle(states[0,0:2], 0.1, color='b')
+# ax.add_patch(start)
+
+plt.scatter(states[0,0], states[0,1], s=40, marker="D", color='r', zorder=1.9)
+plt.scatter(target_point[0], target_point[1], s=80, marker="*", color='r', zorder=1.9)
 
 if circulation:
-    plt.plot(states[:,0], states[:,1], color='k', linestyle=":", zorder=0.9)
+    plt.plot(states[:,0], states[:,1], color='#F76707', linestyle="--", lw=3, zorder=0.9)
     indices = [0]
     for i in range(1, len(states)):
         if np.linalg.norm(states[i,:2] - states[indices[-1],:2]) > 2*robot_r and i != len(states)-1:
@@ -201,11 +204,11 @@ if circulation:
 
     for i in indices:
         state = states[i]
-        robot = plt.Circle(state[:2], robot_r, edgecolor='k', facecolor="None", linestyle='--')
+        robot = plt.Circle(state[:2], robot_r, edgecolor='#F76707', facecolor="None", linestyle='--', lw=2)
         ax.add_patch(robot)
 
 else:
-    plt.plot(states[:,0], states[:,1], color='k', linestyle=":", zorder=0.9)
+    plt.plot(states[:,0], states[:,1], color='#F76707', linestyle="--", lw=3, zorder=0.9)
     indices = [0]
     for i in range(1, len(states)):
         if np.linalg.norm(states[i,:2] - states[indices[-1],:2]) > 2*robot_r and i != len(states)-1:
@@ -214,18 +217,18 @@ else:
 
     for i in indices:
         state = states[i]
-        robot = plt.Circle(state[:2], robot_r, edgecolor='k', facecolor="None", linestyle='--')
+        robot = plt.Circle(state[:2], robot_r, edgecolor='#F76707', facecolor="None", linestyle='--', lw=2)
         ax.add_patch(robot)
 # plt.legend()
 # plt.legend(fontsize = legend_fs)
-plt.xlabel('$x$', fontsize=label_fs)
-plt.ylabel('$y$', fontsize=label_fs)
+plt.xlabel('$p_x$', fontsize=label_fs)
+plt.ylabel('$p_y$', fontsize=label_fs)
 plt.xticks(fontsize = tick_fs)
 plt.yticks(fontsize = tick_fs)
-plt.xlim(-7, 7)
-plt.ylim(-3, 3)
+plt.xlim(-3, 3)
+plt.ylim(-6, 6)
 plt.tight_layout()
-results_dir = "{}/eg6_results".format(str(Path(__file__).parent.parent))
+results_dir = "{}/eg6_results/001".format(str(Path(__file__).parent.parent))
 if circulation:
     plt.savefig(os.path.join(results_dir, 'plot_x_y_w_circulation.pdf'))
 else:

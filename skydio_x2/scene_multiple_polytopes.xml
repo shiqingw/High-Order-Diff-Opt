@@ -25,9 +25,9 @@
 
     <geom name="floor" size="10 10 0.05" type="plane" material="groundplane"/>
 
-    <geom type="mesh" mesh="tetrahedron" pos="0 0 2" quat="1 0 0 0" rgba="0.5 0.5 0.5 1" contype="0" conaffinity="0"/>
-    <geom type="mesh" mesh="tetrahedron" pos="0 0 2" quat="1 0 0 1" rgba="0.5 0.5 0.5 1" contype="0" conaffinity="0"/>
-    <geom type="mesh" mesh="tetrahedron" pos="0 0 2" quat="0 0 0 1" rgba="0.5 0.5 0.5 1" contype="0" conaffinity="0"/>
-    <geom type="mesh" mesh="tetrahedron" pos="0 0 2" quat="1 0 0 -1" rgba="0.5 0.5 0.5 1" contype="0" conaffinity="0"/>
+    <geom type="mesh" mesh="tetrahedron" pos="0 0 2" quat="0.9238795325112867 0.0 0.0 0.3826834323650898" rgba="0.5 0.5 0.5 1" contype="0" conaffinity="0"/>
+    <geom type="mesh" mesh="tetrahedron" pos="0 0 2" quat="0.38268343236508984 0.0 0.0 0.9238795325112867" rgba="0.5 0.5 0.5 1" contype="0" conaffinity="0"/>
+    <geom type="mesh" mesh="tetrahedron" pos="0 0 2" quat="0.3826834323650897 0.0 0.0 -0.9238795325112867" rgba="0.5 0.5 0.5 1" contype="0" conaffinity="0"/>
+    <geom type="mesh" mesh="tetrahedron" pos="0 0 2" quat="0.9238795325112867 0.0 0.0 -0.3826834323650899" rgba="0.5 0.5 0.5 1" contype="0" conaffinity="0"/>
   </worldbody>
 </mujoco>

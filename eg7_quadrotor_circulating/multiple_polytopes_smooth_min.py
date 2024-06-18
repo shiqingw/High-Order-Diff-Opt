@@ -17,7 +17,7 @@ from cores.utils.rotation_utils import np_get_quat_qw_first
 from cores.utils.control_utils import solve_LQR_tracking, solve_infinite_LQR
 from cores.utils.proxsuite_utils import init_proxsuite_qp
 from cores.dynamical_systems.create_system import get_system
-import diffOptHelper as DOC
+import diffOptHelper2 as DOC
 from cores.configuration.configuration import Configuration
 from scipy.spatial.transform import Rotation
 from cores.obstacle_collections.john_ellipsoid_collection import JohnEllipsoidCollection
@@ -84,6 +84,7 @@ if __name__ == '__main__':
     tmp = np.array(test_settings["bounding_ellipsoid_size"], config.np_dtype)
     D_BB_sqrt = np.diag(1.0/tmp)
     D_BB = D_BB_sqrt @ D_BB_sqrt.T
+    robot_SF = DOC.Ellipsoid3d(True, D_BB, bounding_ellipsoid_offset)
 
     # Obstacle
     obstacle_config = test_settings["obstacle_config"]
@@ -96,6 +97,7 @@ if __name__ == '__main__':
     obstacle_kappa = cvxpy_config["obstacle_kappa"]
     print("==> Define cvxpy problem")
     cp_problems = []
+    obstacle_SFs = []
     _p = cp.Variable(3)
     _ellipse_Q_sqrt = cp.Parameter((3,3))
     _ellipse_b = cp.Parameter(3)
@@ -119,14 +121,19 @@ if __name__ == '__main__':
         _ellipse_Q_sqrt.value = ellipse_Q_sqrt_np
         _ellipse_b.value = -2 * ellipse_Q_np @ drone_pos_np
         _ellipse_c.value = drone_pos_np.T @ ellipse_Q_np @ drone_pos_np
-        problem.solve(warm_start=True, solver=cp.ECOS)
+        problem.solve(warm_start=True, solver=cp.SCS)
         cp_problems.append(problem)
+
+        # create scaling functions
+        SF =DOC.LogSumExp3d(False, A_obs_np, b_obs_np, obstacle_kappa)
+        obstacle_SFs.append(SF)
 
         # add visual ellipsoids
         all_points = obs_col.face_equations[key]["vertices_in_world"]
         for j in range(len(all_points)):
             env.add_visual_ellipsoid(0.05*np.ones(3), all_points[j], np.eye(3), np.array([1,0,0,1]),id_geom_offset=id_geom_offset)
             id_geom_offset = env.viewer.user_scn.ngeom
+
     # Tracking control via LQR
     horizon = test_settings["horizon"]
     t_1 = 0.6 * horizon * dt
@@ -175,7 +182,7 @@ if __name__ == '__main__':
         A, B = system.get_linearization(x_traj[i,:], u_traj[i,:]) 
         A_list[i] = A
         B_list[i] = B
-    Q_pos = [10,10,10]
+    Q_pos = [10,15,15]
     Q_quat = [10,10,10,10]
     Q_v = [10,10,10]
     Q_omega = [1,1,1]
@@ -232,7 +239,7 @@ if __name__ == '__main__':
 
         time_control_loop_start = time.time()
         state = states[i,:]
-        P_BB = state[0:3] + bounding_ellipsoid_offset
+        P_BB = state[0:3]
         quat_BB = state[3:7]
         R_BB = Rotation.from_quat(quat_BB).as_matrix()
         u_nominal = lqr_controller(state, i)
@@ -274,24 +281,18 @@ if __name__ == '__main__':
                     # Solve the scaling function, gradient, and Hessian
                     p_sol_np = np.squeeze(_p.value)
                     time_diff_helper_tmp -= time.time()
-                    alpha, alpha_dx_tmp, alpha_dxdx_tmp = DOC.getGradientAndHessianEllipsoidAndLogSumExp(p_sol_np, P_BB,
-                                            quat_BB, D_BB, R_BB, A_obs_np, b_obs_np, obstacle_kappa)
+                    SF = obstacle_SFs[kk]
+                    alpha, alpha_dx_tmp, alpha_dxdx_tmp = DOC.getGradientAndHessian3d(p_sol_np, robot_SF, P_BB, quat_BB, 
+                                                                                      SF, np.zeros(3), np.array([0,0,0,1]))
                     time_diff_helper_tmp += time.time()
 
-                    h = alpha - alpha0
-                    
-                    # Order of parameters in alpha_dx_tmp and alpha_dxdx_tmp: [qx, qy, qz, qw, x, y, z]
-                    # Convert to the order of [x, y, z, qx, qy, qz, qw, vx, vy, vz, wx, wy, wz]
                     alpha_dx = np.zeros(system.n_states, dtype=config.np_dtype)
-                    alpha_dx[0:3] = alpha_dx_tmp[4:7]
-                    alpha_dx[3:7] = alpha_dx_tmp[0:4]
+                    alpha_dx[0:7] = alpha_dx_tmp
 
                     alpha_dxdx = np.zeros((system.n_states, system.n_states), dtype=config.np_dtype)
-                    alpha_dxdx[0:3,0:3] = alpha_dxdx_tmp[4:7,4:7]
-                    alpha_dxdx[3:7,3:7] = alpha_dxdx_tmp[0:4,0:4]
-                    alpha_dxdx[0:3,3:7] = alpha_dxdx_tmp[4:7,0:4]
-                    alpha_dxdx[3:7,0:3] = alpha_dxdx_tmp[0:4,4:7]
+                    alpha_dxdx[0:7,0:7] = alpha_dxdx_tmp
 
+                    h = alpha - alpha0
                     all_h[kk] = h
                     all_h_dx[kk,:] = alpha_dx
                     all_h_dxdx[kk,:,:] = alpha_dxdx
@@ -305,7 +306,7 @@ if __name__ == '__main__':
             h_selected = all_h[indices]
             h_dx_selected = all_h_dx[indices,:]
             h_dxdx_selected = all_h_dxdx[indices,:,:]
-            alpha, alpha_dx, alpha_dxdx = DOC.getSmoothMinimumGradientAndHessian(rho, h_selected, h_dx_selected, h_dxdx_selected)
+            alpha, alpha_dx, alpha_dxdx = DOC.getSmoothMinimumAndTotalGradientAndHessian(rho, h_selected, h_dx_selected, h_dxdx_selected)
             CBF = alpha - 1
 
             drift = np.squeeze(system.drift(state)) # f(x), shape = (6,)
@@ -318,10 +319,11 @@ if __name__ == '__main__':
                 - (gamma1+gamma2) * alpha_dx @ drift - gamma1 * gamma2 * CBF + compensation
             ub[0] = np.inf
             
-            tmp = np.array([-C[0,1]+C[0,2], C[0,0], -C[0,0], 0]).astype(config.np_dtype)
+            tmp = np.array([-C[0,1], C[0,0], 0, 0]).astype(config.np_dtype)
             C[1,:] = tmp
 
-            lb[1] = C[1,:] @ system.ueq - 10*(CBF-0.2)*(CBF+0.2)
+            threshold = 1
+            lb[1] = C[1,:] @ system.ueq - 0.4*(CBF-threshold)*(CBF+threshold)
             ub[1] = np.inf
 
             H = np.diag([1,1,1,1]).astype(config.np_dtype)
