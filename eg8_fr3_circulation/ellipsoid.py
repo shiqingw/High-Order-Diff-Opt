@@ -17,10 +17,10 @@ from cores.utils.utils import seed_everything, save_dict
 from cores.utils.proxsuite_utils import init_proxsuite_qp
 import diffOptHelper2 as doh
 from cores.utils.rotation_utils import get_quat_from_rot_matrix, get_Q_matrix_from_quat, get_dQ_matrix
-from cores.utils.control_utils import get_torque_to_track_traj_const_ori
 from cores.configuration.configuration import Configuration
 from scipy.spatial.transform import Rotation
 from liegroups import SO3
+from cores.utils.trajectory_utils import PositionTrapezoidalTrajectory
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -71,7 +71,7 @@ if __name__ == "__main__":
     initial_joint_angles = test_settings["initial_joint_angles"]
     dt = 1.0/240.0
 
-    env = FR3MuJocoEnv(xml_name="fr3_on_table_with_bounding_boxes_n_obstacle", base_pos=base_pos, base_quat=base_quat,
+    env = FR3MuJocoEnv(xml_name="fr3_on_table_with_bounding_boxes_circulation_ellipsoid", base_pos=base_pos, base_quat=base_quat,
                     cam_distance=cam_distance, cam_azimuth=cam_azimuth, cam_elevation=cam_elevation, cam_lookat=cam_lookat, dt=dt)
     info = env.reset(initial_joint_angles)
     
@@ -96,34 +96,24 @@ if __name__ == "__main__":
         robot_SFs.append(SF)
     
     # Compute desired trajectory
-    traj_center = np.array(trajectory_config["center"], dtype=config.np_dtype)
-    traj_radius = trajectory_config["radius"]
-    traj_angular_velocity = trajectory_config["angular_velocity"]
-    horizon = test_settings["horizon_length"]
-    t = np.linspace(0, horizon*dt, horizon+1)
-    traj_pos = np.repeat(traj_center.reshape(1,3), horizon+1, axis=0)
-    traj_pos[:,1] += traj_radius * np.cos(traj_angular_velocity*t)
-    traj_pos[:,2] += traj_radius * np.sin(traj_angular_velocity*t)
-
-    traj_pos_dt = np.zeros([horizon+1, 3], dtype=config.np_dtype)
-    traj_pos_dt[:,1] = -traj_radius * traj_angular_velocity * np.sin(traj_angular_velocity*t)
-    traj_pos_dt[:,2] = traj_radius * traj_angular_velocity * np.cos(traj_angular_velocity*t)
-
-    traj_pos_dtdt = np.zeros([horizon+1, 3], dtype=config.np_dtype)
-    traj_pos_dtdt[:,1] = -traj_radius * traj_angular_velocity**2 * np.cos(traj_angular_velocity*t)
-    traj_pos_dtdt[:,2] = -traj_radius * traj_angular_velocity**2 * np.sin(traj_angular_velocity*t)
+    t_final = 20
+    P_EE_end = np.array([0.2, -0.4, 1.4])
+    P_EE_initial = np.array([0.2, 0.4, 1.4])
+    via_points = np.array([P_EE_initial, P_EE_end])
+    target_time = np.array([0, t_final])
+    Ts = 0.01
+    traj_line = PositionTrapezoidalTrajectory(via_points, target_time, T_antp=0.2, Ts=Ts)
 
     # Visualize the trajectory
     N = 100
-    thetas = np.linspace(0, 2*np.pi, N)
-    traj_circle = np.zeros([N, 3], dtype=config.np_dtype)
-    traj_circle[:,0] = traj_center[0]
-    traj_circle[:,1] = traj_center[1] + traj_radius * np.cos(thetas)
-    traj_circle[:,2] = traj_center[2] + traj_radius * np.sin(thetas)
+    len_traj = len(traj_line.t)
+    sampled = np.linspace(0, len_traj-1, N).astype(int)
+    sampled = traj_line.pd[sampled]
+    id_geom_offset = 0
     for i in range(N-1):
-        env.add_visual_capsule(traj_circle[i], traj_circle[i+1], 0.004, np.array([0,0,1,1]))
-        env.viewer.sync()
-    id_geom_offset = env.viewer.user_scn.ngeom 
+        env.add_visual_capsule(sampled[i], sampled[i+1], 0.004, np.array([0,0,1,1]), id_geom_offset)
+        id_geom_offset = env.viewer.user_scn.ngeom 
+    env.viewer.sync()
 
     # CBF parameters
     CBF_config = test_settings["CBF_config"]
@@ -141,6 +131,7 @@ if __name__ == "__main__":
 
     # Create records
     print("==> Create records")
+    horizon = int(t_final/dt)
     times = np.linspace(0, (horizon-1)*dt, horizon)
     joint_angles = np.zeros([horizon, n_controls], dtype=config.np_dtype)
     controls = np.zeros([horizon, 7], dtype=config.np_dtype)
@@ -191,9 +182,10 @@ if __name__ == "__main__":
         # Primary obejctive: tracking control
         K_p_pos = np.diag([100,100,100]).astype(config.np_dtype)
         K_d_pos = np.diag([50,50,50]).astype(config.np_dtype)
-        e_pos = P_EE - traj_pos[i,:] # shape (3,)
-        e_pos_dt = v_EE[:3] - traj_pos_dt[i,:] # shape (3,)
-        v_dt = traj_pos_dtdt[i,:] - K_p_pos @ e_pos - K_d_pos @ e_pos_dt
+        traj_pos, traj_pos_dt, traj_pos_dtdt = traj_line.get_traj_and_ders(i*dt)
+        e_pos = P_EE - traj_pos # shape (3,)
+        e_pos_dt = v_EE[:3] - traj_pos_dt # shape (3,)
+        v_dt = traj_pos_dtdt - K_p_pos @ e_pos - K_d_pos @ e_pos_dt
 
         R_d = np.array([[1, 0, 0],
                         [0, -1, 0],

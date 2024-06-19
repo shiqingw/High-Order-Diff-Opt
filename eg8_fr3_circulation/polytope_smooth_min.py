@@ -20,10 +20,13 @@ from cores.utils.rotation_utils import get_quat_from_rot_matrix, get_Q_matrix_fr
 from cores.configuration.configuration import Configuration
 from scipy.spatial.transform import Rotation
 from liegroups import SO3
+from cores.utils.trajectory_utils import PositionTrapezoidalTrajectory
+from cores.obstacle_collections.polytope_collection import PolytopeCollection
+import cvxpy as cp
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--exp_num', default=2, type=int, help='test case number')
+    parser.add_argument('--exp_num', default=3, type=int, help='test case number')
     args = parser.parse_args()
 
     # Create result directory
@@ -46,7 +49,6 @@ if __name__ == "__main__":
 
     # Various configs
     simulator_config = test_settings["simulator_config"]
-    controller_config = test_settings["controller_config"]
     CBF_config = test_settings["CBF_config"]
     trajectory_config = test_settings["trajectory_config"]
 
@@ -70,59 +72,94 @@ if __name__ == "__main__":
     initial_joint_angles = test_settings["initial_joint_angles"]
     dt = 1.0/240.0
 
-    env = FR3MuJocoEnv(xml_name="fr3_on_table_with_bounding_boxes_n_obstacle", base_pos=base_pos, base_quat=base_quat,
+    env = FR3MuJocoEnv(xml_name="fr3_on_table_with_bounding_boxes_circulation", base_pos=base_pos, base_quat=base_quat,
                     cam_distance=cam_distance, cam_azimuth=cam_azimuth, cam_elevation=cam_elevation, cam_lookat=cam_lookat, dt=dt)
     info = env.reset(initial_joint_angles)
-    
-    # Load the obstacle
-    obstacle_config = test_settings["obstacle_config"]
-    obs_pos_np = np.array(obstacle_config["pos"], dtype=config.np_dtype)
-    obs_quat_np = np.array(obstacle_config["quat"], dtype=config.np_dtype) # (x, y, z, w)
-    obs_size_np = np.array(obstacle_config["size"])
-    obs_coef_np = np.diag(1/obs_size_np**2)
-    obs_R_np = Rotation.from_quat(obs_quat_np).as_matrix()
-    obs_coef_np = obs_R_np @ obs_coef_np @ obs_R_np.T
-    obstacle_SFs = []
-    SF = doh.Ellipsoid3d(False, obs_coef_np, obs_pos_np)
-    obstacle_SFs.append(SF)
 
     # Load the bounding shape coefficients
     BB_coefs = BoundingShapeCoef()
-    robot_SFs = []
-    for name_BB in CBF_config["selected_bbs"]:
-        quadratic_coef = BB_coefs.coefs[name_BB]
+    robot_SFs = {}
+    for (i, bb_key) in enumerate(CBF_config["selected_bbs"]):
+        quadratic_coef = BB_coefs.coefs[bb_key]
         SF = doh.Ellipsoid3d(True, quadratic_coef, np.zeros(3))
-        robot_SFs.append(SF)
-    
+        robot_SFs[bb_key] = SF
+
+    # Obstacle
+    cvxpy_config = test_settings["cvxpy_config"]
+    obstacle_kappa = cvxpy_config["obstacle_kappa"]
+    obstacle_config = test_settings["obstacle_config"]
+    n_obstacle = len(obstacle_config)
+    obstacle_SFs = {}
+    obs_col = PolytopeCollection(3, n_obstacle, obstacle_config)
+    id_geom_offset = 0
+    for (i, obs_key) in enumerate(obs_col.face_equations.keys()):
+        A_obs_np = obs_col.face_equations[obs_key]["A"]
+        b_obs_np = obs_col.face_equations[obs_key]["b"]
+        SF =doh.LogSumExp3d(False, A_obs_np, b_obs_np, obstacle_kappa)
+        obstacle_SFs[obs_key] = SF
+
+        # add visual ellipsoids
+        all_points = obs_col.face_equations[obs_key]["vertices_in_world"]
+        for j in range(len(all_points)):
+            env.add_visual_ellipsoid(0.05*np.ones(3), all_points[j], np.eye(3), np.array([1,0,0,1]),id_geom_offset=id_geom_offset)
+            id_geom_offset = env.viewer.user_scn.ngeom
+
+    # Define cvxpy problem
+    print("==> Define cvxpy problem")
+    x_max_np = cvxpy_config["x_max"]
+    cp_problems = {}
+    _p = cp.Variable(3)
+    _ellipse_Q_sqrt = cp.Parameter((3,3))
+    _ellipse_b = cp.Parameter(3)
+    _ellipse_c = cp.Parameter()
+
+    for (i, bb_key) in enumerate(CBF_config["selected_bbs"]):
+        cp_problem_bb = {}
+        D_BB_sqrt = BB_coefs.coefs_sqrt[bb_key]
+
+        for (j, obs_key) in enumerate(obs_col.face_equations.keys()):
+            A_obs_np = obs_col.face_equations[obs_key]["A"]
+            b_obs_np = obs_col.face_equations[obs_key]["b"]
+            n_cons_obs = len(b_obs_np)
+
+            obj = cp.Minimize(cp.sum_squares(_ellipse_Q_sqrt @ _p) + _ellipse_b.T @ _p + _ellipse_c)
+            cons = [cp.log_sum_exp(obstacle_kappa*(A_obs_np @ _p + b_obs_np)-x_max_np) - np.log(n_cons_obs) + x_max_np <= 0]
+            problem = cp.Problem(obj, cons)
+            assert problem.is_dcp()
+            assert problem.is_dpp()
+
+            # warm start with fake data
+            R_b_to_w_np = np.eye(3)
+            bb_pos_np = np.array([0,0,0], dtype=config.np_dtype)
+            ellipse_Q_sqrt_np = D_BB_sqrt @ R_b_to_w_np.T
+            ellipse_Q_np = ellipse_Q_sqrt_np.T @ ellipse_Q_sqrt_np
+            _ellipse_Q_sqrt.value = ellipse_Q_sqrt_np
+            _ellipse_b.value = -2 * ellipse_Q_np @ bb_pos_np
+            _ellipse_c.value = bb_pos_np.T @ ellipse_Q_np @ bb_pos_np
+            problem.solve(warm_start=True, solver=cp.SCS)
+            cp_problem_bb[obs_key] = problem
+
+        cp_problems[bb_key] = cp_problem_bb
+
     # Compute desired trajectory
-    traj_center = np.array(trajectory_config["center"], dtype=config.np_dtype)
-    traj_radius = trajectory_config["radius"]
-    traj_angular_velocity = trajectory_config["angular_velocity"]
-    horizon = test_settings["horizon_length"]
-    t = np.linspace(0, horizon*dt, horizon+1)
-    traj_pos = np.repeat(traj_center.reshape(1,3), horizon+1, axis=0)
-    traj_pos[:,1] += traj_radius * np.cos(traj_angular_velocity*t)
-    traj_pos[:,2] += traj_radius * np.sin(traj_angular_velocity*t)
-
-    traj_pos_dt = np.zeros([horizon+1, 3], dtype=config.np_dtype)
-    traj_pos_dt[:,1] = -traj_radius * traj_angular_velocity * np.sin(traj_angular_velocity*t)
-    traj_pos_dt[:,2] = traj_radius * traj_angular_velocity * np.cos(traj_angular_velocity*t)
-
-    traj_pos_dtdt = np.zeros([horizon+1, 3], dtype=config.np_dtype)
-    traj_pos_dtdt[:,1] = -traj_radius * traj_angular_velocity**2 * np.cos(traj_angular_velocity*t)
-    traj_pos_dtdt[:,2] = -traj_radius * traj_angular_velocity**2 * np.sin(traj_angular_velocity*t)
+    t_final = 20
+    P_EE_end = np.array([0.2, -0.4, 1.4])
+    P_EE_initial = np.array([0.2, 0.4, 1.4])
+    via_points = np.array([P_EE_initial, P_EE_end])
+    target_time = np.array([0, t_final])
+    Ts = 0.01
+    traj_line = PositionTrapezoidalTrajectory(via_points, target_time, T_antp=0.2, Ts=Ts)
 
     # Visualize the trajectory
     N = 100
-    thetas = np.linspace(0, 2*np.pi, N)
-    traj_circle = np.zeros([N, 3], dtype=config.np_dtype)
-    traj_circle[:,0] = traj_center[0]
-    traj_circle[:,1] = traj_center[1] + traj_radius * np.cos(thetas)
-    traj_circle[:,2] = traj_center[2] + traj_radius * np.sin(thetas)
+    len_traj = len(traj_line.t)
+    sampled = np.linspace(0, len_traj-1, N).astype(int)
+    sampled = traj_line.pd[sampled]
+    id_geom_offset = 0
     for i in range(N-1):
-        env.add_visual_capsule(traj_circle[i], traj_circle[i+1], 0.004, np.array([0,0,1,1]))
-        env.viewer.sync()
-    id_geom_offset = env.viewer.user_scn.ngeom 
+        env.add_visual_capsule(sampled[i], sampled[i+1], 0.004, np.array([0,0,1,1]), id_geom_offset)
+        id_geom_offset = env.viewer.user_scn.ngeom 
+    env.viewer.sync()
 
     # CBF parameters
     CBF_config = test_settings["CBF_config"]
@@ -141,6 +178,7 @@ if __name__ == "__main__":
 
     # Create records
     print("==> Create records")
+    horizon = int(t_final/dt)
     times = np.linspace(0, (horizon-1)*dt, horizon)
     joint_angles = np.zeros([horizon, n_controls], dtype=config.np_dtype)
     controls = np.zeros([horizon, 7], dtype=config.np_dtype)
@@ -192,9 +230,10 @@ if __name__ == "__main__":
         # Primary obejctive: tracking control
         K_p_pos = np.diag([100,100,100]).astype(config.np_dtype)
         K_d_pos = np.diag([50,50,50]).astype(config.np_dtype)
-        e_pos = P_EE - traj_pos[i,:] # shape (3,)
-        e_pos_dt = v_EE[:3] - traj_pos_dt[i,:] # shape (3,)
-        v_dt = traj_pos_dtdt[i,:] - K_p_pos @ e_pos - K_d_pos @ e_pos_dt
+        traj_pos, traj_pos_dt, traj_pos_dtdt = traj_line.get_traj_and_ders(i*dt)
+        e_pos = P_EE - traj_pos # shape (3,)
+        e_pos_dt = v_EE[:3] - traj_pos_dt # shape (3,)
+        v_dt = traj_pos_dtdt - K_p_pos @ e_pos - K_d_pos @ e_pos_dt
 
         R_d = np.array([[1, 0, 0],
                         [0, -1, 0],
@@ -224,6 +263,7 @@ if __name__ == "__main__":
         u_nominal = nle + M_mj @ q_dtdt
 
         time_diff_helper_tmp = 0
+        time_cvxpy_tmp = 0
         if CBF_config["active"]:
             # Matrices for the CBF-QP constraints
             C = np.zeros([n_controls+2, n_controls], dtype=config.np_dtype)
@@ -262,26 +302,49 @@ if __name__ == "__main__":
                 dA_BB = np.zeros((7,6), dtype=config.np_dtype)
                 dA_BB[3:7,3:6] = dQ_BB
 
-                SF1 = robot_SFs[kk]
+                SF1 = robot_SFs[name_BB]
 
-                for (ll, SF_obs) in enumerate(obstacle_SFs):
-                    SF2 = obstacle_SFs[ll]
-                    time_diff_helper_tmp -= time.time()
-                    p_rimon = doh.rimonMethod3d(SF1, P_BB, quat_BB, SF2, np.zeros(3), np.array([0,0,0,1]))
-                    alpha, alpha_dx, alpha_dxdx = doh.getGradientAndHessian3d(p_rimon, SF1, P_BB, quat_BB,
-                                                                              SF2, np.zeros(3), np.array([0,0,0,1]))
-                    time_diff_helper_tmp += time.time()
+                # Pass parameter values to cvxpy problem
+                D_BB_sqrt = BB_coefs.coefs_sqrt[name_BB]
+                ellipse_Q_sqrt_np = D_BB_sqrt @ R_BB.T
+                ellipse_Q_np = ellipse_Q_sqrt_np.T @ ellipse_Q_sqrt_np
+                _ellipse_Q_sqrt.value = ellipse_Q_sqrt_np
+                _ellipse_b.value = -2 * ellipse_Q_np @ P_BB
+                _ellipse_c.value = P_BB.T @ ellipse_Q_np @ P_BB
 
-                    h = alpha - alpha0
-                    h_dx = alpha_dx
-                    h_dxdx = alpha_dxdx
-                    all_h[kk*n_obs+ll] = h
-                    first_order_all_average_scalar[kk*n_obs+ll] = h_dx @ dx_BB
-                    second_order_all_average_scalar[kk*n_obs+ll] = dx_BB.T @ h_dxdx @ dx_BB + h_dx @ dA_BB @ v_BB \
-                        + h_dx @ A_BB @ dJdq_BB - h_dx @ A_BB @ J_BB @ Minv_mj @ nle_mj
-                    second_order_all_average_vector[kk*n_obs+ll,:] = h_dx @ A_BB @ J_BB @ Minv_mj
+                for (ll, obs_key) in enumerate(obstacle_SFs.keys()):
+                    SF2 = obstacle_SFs[obs_key]
+                    all_vertices_in_world = obs_col.face_equations[obs_key]["vertices_in_world"]
+                    min_distance = np.linalg.norm(all_vertices_in_world - P_BB, axis=1).min()
+                    A_obs_np = obs_col.face_equations[obs_key]["A"]
+                    b_obs_np = obs_col.face_equations[obs_key]["b"]
 
-                    CBF_tmp[kk*n_obs+ll] = h
+                    if min_distance < 10:
+
+                        # solve cvxpy problem
+                        time_cvxpy_tmp -= time.time()
+                        cp_problems[name_BB][obs_key].solve(solver=cp.SCS, warm_start=True)
+                        time_cvxpy_tmp += time.time()
+
+                        p_sol_np = np.squeeze(_p.value)
+                        time_diff_helper_tmp -= time.time()
+                        alpha, alpha_dx, alpha_dxdx = doh.getGradientAndHessian3d(p_sol_np, SF1, P_BB, quat_BB, 
+                                                                                SF2, np.zeros(3), np.array([0,0,0,1]))
+                        time_diff_helper_tmp += time.time()
+
+                        h = alpha - alpha0
+                        h_dx = alpha_dx
+                        h_dxdx = alpha_dxdx
+                        all_h[kk*n_obs+ll] = h
+                        first_order_all_average_scalar[kk*n_obs+ll] = h_dx @ dx_BB
+                        second_order_all_average_scalar[kk*n_obs+ll] = dx_BB.T @ h_dxdx @ dx_BB + h_dx @ dA_BB @ v_BB \
+                            + h_dx @ A_BB @ dJdq_BB - h_dx @ A_BB @ J_BB @ Minv_mj @ nle_mj
+                        second_order_all_average_vector[kk*n_obs+ll,:] = h_dx @ A_BB @ J_BB @ Minv_mj
+
+                        CBF_tmp[kk*n_obs+ll] = h
+                    else:
+                        all_h[kk*n_obs+ll] = np.inf
+                        CBF_tmp[kk*n_obs+ll] = 0
             
             rho = 2
             min_h = np.min(all_h)
@@ -305,11 +368,12 @@ if __name__ == "__main__":
 
             # Circulation constraints
             tmp = np.array([-C[0,1], C[0,0], -C[0,3], C[0,2], -C[0,5], C[0,4], 0, 0, 0]).astype(config.np_dtype)
+            # tmp = np.array([0, -C[0,2], C[0,1], -C[0,4], C[0,3], -C[0,6], C[0,5], 0, 0]).astype(config.np_dtype)
             C[1,:] = tmp
 
             ueq = G
-            threshold = 1
-            lb[1] = C[1,:] @ ueq - 0.4*(CBF-threshold)*(CBF+threshold)
+            threshold = 0.1
+            lb[1] = C[1,:] @ ueq - 10*(CBF-threshold)*(CBF+threshold)
             ub[1] = np.inf
 
 
@@ -354,6 +418,7 @@ if __name__ == "__main__":
         phi1s[i] = phi1_tmp
         phi2s[i] = phi2_tmp
         smooth_mins[i] = smooth_min_tmp
+        time_cvxpy[i] = time_cvxpy_tmp
         time_diff_helper[i] = time_diff_helper_tmp
         time_cbf_qp[i] = time_cbf_qp_end - time_cbf_qp_start
         time_control_loop[i] = time_control_loop_end - time_control_loop_start

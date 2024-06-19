@@ -8,7 +8,7 @@
     "save_detection": 0,
     "save_scaling_function": 0,
     "zero_vel": 0,
-    "horizon_length": 2000,
+    "horizon_length": 3000,
     "step_every": 8,
     "save_every": 24,
     "initial_joint_angles": [0.48, 0.16, 0.27, -1.26, -0.04, 1.42, 1.53, 0.01, 0.01],
@@ -45,9 +45,12 @@
     },
 
     "obstacle_config":{
-        "size": [0.2, 0.2, 0.2],
-        "pos": [0.2, 0.0, 1.4],
-        "quat": [0, 0, 0, 1]
+        "obs1":{
+            "type": "polytope",
+            "vertices": [[0, -0.05, 0], [0.4, -0.05, 0], [0.4, 0.05, 0], [0, 0.05, 0], [0, -0.05, 0.4], [0.4, -0.05, 0.4], [0.4, 0.05, 0.4], [0, 0.05, 0.4]],
+            "pos": [0.1, 0, 1.3],
+            "quat": [0.0, 0.0, 0.0, 1.0]
+        }
     },
 
     "trajectory_config":{
@@ -59,13 +62,16 @@
     "CBF_config":{
         "active": 1,
         "selected_bbs": ["HAND_BB", "LINK7_BB", "LINK6_BB", "LINK5_2_BB", "LINK5_1_BB", "LINK4_BB", "LINK3_BB"],
-        "alpha0": [1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3],
-        "gamma1": [3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0],
-        "gamma2": [10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0],
-        "compensation": [1, 1, 1, 1, 1, 1, 1]
+        "alpha0": 1.3,
+        "f0": 1,
+        "gamma1": 3,
+        "gamma2": 10,
+        "compensation": 0
     },
 
-    "controller_config":{
-
+    "cvxpy_config":{
+        "solver": "SCS",
+        "obstacle_kappa": 20,
+        "x_max": 10
     }
 }
