@@ -20,13 +20,13 @@ from cores.utils.rotation_utils import get_quat_from_rot_matrix, get_Q_matrix_fr
 from cores.configuration.configuration import Configuration
 from scipy.spatial.transform import Rotation
 from liegroups import SO3
-from cores.utils.trajectory_utils import PositionTrapezoidalTrajectory
+from cores.utils.trajectory_utils import PositionTrapezoidalTrajectory, OrientationTrapezoidalTrajectory
 from cores.obstacle_collections.polytope_collection import PolytopeCollection
 import cvxpy as cp
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--exp_num', default=3, type=int, help='test case number')
+    parser.add_argument('--exp_num', default=4, type=int, help='test case number')
     args = parser.parse_args()
 
     # Create result directory
@@ -57,10 +57,10 @@ if __name__ == "__main__":
     joint_lb = np.array(joint_limits_config["lb"], dtype=config.np_dtype)
     joint_ub = np.array(joint_limits_config["ub"], dtype=config.np_dtype)
 
-    # Input torque limits
-    input_torque_limits_config = test_settings["input_torque_limits_config"]
-    input_torque_lb = np.array(input_torque_limits_config["lb"], dtype=config.np_dtype)
-    input_torque_ub = np.array(input_torque_limits_config["ub"], dtype=config.np_dtype)
+    # Joint acceleration limits
+    joint_acc_limits_config = test_settings["joint_acceleration_limits_config"]
+    joint_acc_lb = np.array(joint_acc_limits_config["lb"], dtype=config.np_dtype)
+    joint_acc_ub = np.array(joint_acc_limits_config["ub"], dtype=config.np_dtype)
 
     # Create and reset simulation
     cam_distance = simulator_config["cam_distance"]
@@ -72,7 +72,7 @@ if __name__ == "__main__":
     initial_joint_angles = test_settings["initial_joint_angles"]
     dt = 1.0/240.0
 
-    env = FR3MuJocoEnv(xml_name="fr3_on_table_with_bounding_boxes_circulation", base_pos=base_pos, base_quat=base_quat,
+    env = FR3MuJocoEnv(xml_name="fr3_on_table_with_bounding_boxes_circulation_polytope", base_pos=base_pos, base_quat=base_quat,
                     cam_distance=cam_distance, cam_azimuth=cam_azimuth, cam_elevation=cam_elevation, cam_lookat=cam_lookat, dt=dt)
     info = env.reset(initial_joint_angles)
 
@@ -142,13 +142,23 @@ if __name__ == "__main__":
         cp_problems[bb_key] = cp_problem_bb
 
     # Compute desired trajectory
-    t_final = 20
-    P_EE_end = np.array([0.2, -0.4, 1.4])
-    P_EE_initial = np.array([0.2, 0.4, 1.4])
-    via_points = np.array([P_EE_initial, P_EE_end])
-    target_time = np.array([0, t_final])
+    t_final = 60
+    P_EE_0 = np.array([0.1, 0.0, 1.8])
+    P_EE_1 = np.array([0.55, 0.0, 0.9])
+    P_EE_2 = np.array([0.55, 0.0, 0.89])
+    via_points = np.array([P_EE_0, P_EE_1, P_EE_2])
+    target_time = np.array([0, 5, t_final])
     Ts = 0.01
     traj_line = PositionTrapezoidalTrajectory(via_points, target_time, T_antp=0.2, Ts=Ts)
+
+    R_EE_0 = Rotation.from_euler('xyz', [np.pi, -np.pi/4, 0]).as_matrix()
+    R_EE_1 = np.array([[1, 0, 0],
+                        [0, -1, 0],
+                        [0, 0, -1]], dtype=config.np_dtype)
+    R_EE_2 = R_EE_1
+    orientations = np.array([R_EE_0, R_EE_1], dtype=config.np_dtype)
+    target_time = np.array([0, 5, t_final])
+    traj_orientation = OrientationTrapezoidalTrajectory(orientations, target_time, Ts=Ts)
 
     # Visualize the trajectory
     N = 100
@@ -195,6 +205,7 @@ if __name__ == "__main__":
 
     # Forward simulate the system
     P_EE_prev = info["P_EE"]
+    time_prev = time.time()
     print("==> Forward simulate the system")
     for i in range(horizon):
         all_info.append(info)
@@ -235,14 +246,12 @@ if __name__ == "__main__":
         e_pos_dt = v_EE[:3] - traj_pos_dt # shape (3,)
         v_dt = traj_pos_dtdt - K_p_pos @ e_pos - K_d_pos @ e_pos_dt
 
-        R_d = np.array([[1, 0, 0],
-                        [0, -1, 0],
-                        [0, 0, -1]], dtype=config.np_dtype)
         K_p_rot = np.diag([200,200,200]).astype(config.np_dtype)
         K_d_rot = np.diag([100,100,100]).astype(config.np_dtype)
-        e_rot = SO3(R_EE @ R_d.T).log() # shape (3,)
-        e_rot_dt = v_EE[3:] # shape (3,)
-        omega_dt = - K_p_rot @ e_rot - K_d_rot @ e_rot_dt
+        traj_ori, traj_ori_dt, traj_ori_dtdt = traj_orientation.get_traj_and_ders(i*dt)
+        e_rot = SO3(R_EE @ traj_ori.T).log() # shape (3,)
+        e_rot_dt = v_EE[3:]-traj_ori_dt # shape (3,)
+        omega_dt = traj_ori_dtdt - K_p_rot @ e_rot - K_d_rot @ e_rot_dt
 
         v_EE_dt_desired = np.concatenate([v_dt, omega_dt])
         S = J_EE
@@ -260,7 +269,7 @@ if __name__ == "__main__":
         q_dtdt = q_dtdt_task + S_null @ (- Kp_joint @ e_joint - Kd_joint @ e_joint_dot)
 
         # Map to torques
-        u_nominal = nle + M_mj @ q_dtdt
+        u_nominal = q_dtdt
 
         time_diff_helper_tmp = 0
         time_cvxpy_tmp = 0
@@ -282,13 +291,13 @@ if __name__ == "__main__":
             n_obs = len(obstacle_SFs)
 
             for kk in range(len(selected_BBs)):
-                name_BB = selected_BBs[kk]
-                P_BB = info["P_"+name_BB]
-                R_BB = info["R_"+name_BB]
-                J_BB = info["J_"+name_BB]
-                dJdq_BB = info["dJdq_"+name_BB]
+                bb_key = selected_BBs[kk]
+                P_BB = info["P_"+bb_key]
+                R_BB = info["R_"+bb_key]
+                J_BB = info["J_"+bb_key]
+                dJdq_BB = info["dJdq_"+bb_key]
                 v_BB = J_BB @ dq
-                D_BB = BB_coefs.coefs[name_BB]
+                D_BB = BB_coefs.coefs[bb_key]
                 quat_BB = get_quat_from_rot_matrix(R_BB)
 
                 A_BB = np.zeros((7,6), dtype=config.np_dtype)
@@ -302,10 +311,10 @@ if __name__ == "__main__":
                 dA_BB = np.zeros((7,6), dtype=config.np_dtype)
                 dA_BB[3:7,3:6] = dQ_BB
 
-                SF1 = robot_SFs[name_BB]
+                SF1 = robot_SFs[bb_key]
 
                 # Pass parameter values to cvxpy problem
-                D_BB_sqrt = BB_coefs.coefs_sqrt[name_BB]
+                D_BB_sqrt = BB_coefs.coefs_sqrt[bb_key]
                 ellipse_Q_sqrt_np = D_BB_sqrt @ R_BB.T
                 ellipse_Q_np = ellipse_Q_sqrt_np.T @ ellipse_Q_sqrt_np
                 _ellipse_Q_sqrt.value = ellipse_Q_sqrt_np
@@ -323,7 +332,7 @@ if __name__ == "__main__":
 
                         # solve cvxpy problem
                         time_cvxpy_tmp -= time.time()
-                        cp_problems[name_BB][obs_key].solve(solver=cp.SCS, warm_start=True)
+                        cp_problems[bb_key][obs_key].solve(solver=cp.SCS, warm_start=True)
                         time_cvxpy_tmp += time.time()
 
                         p_sol_np = np.squeeze(_p.value)
@@ -338,8 +347,8 @@ if __name__ == "__main__":
                         all_h[kk*n_obs+ll] = h
                         first_order_all_average_scalar[kk*n_obs+ll] = h_dx @ dx_BB
                         second_order_all_average_scalar[kk*n_obs+ll] = dx_BB.T @ h_dxdx @ dx_BB + h_dx @ dA_BB @ v_BB \
-                            + h_dx @ A_BB @ dJdq_BB - h_dx @ A_BB @ J_BB @ Minv_mj @ nle_mj
-                        second_order_all_average_vector[kk*n_obs+ll,:] = h_dx @ A_BB @ J_BB @ Minv_mj
+                            + h_dx @ A_BB @ dJdq_BB
+                        second_order_all_average_vector[kk*n_obs+ll,:] = h_dx @ A_BB @ J_BB
 
                         CBF_tmp[kk*n_obs+ll] = h
                     else:
@@ -358,6 +367,7 @@ if __name__ == "__main__":
 
             # CBF-QP constraints
             CBF = f - f0
+            print(CBF)
             dCBF =  f_dh @ first_order_all_average_scalar_selected # scalar
             phi1 = dCBF + gamma1 * CBF
 
@@ -368,20 +378,19 @@ if __name__ == "__main__":
 
             # Circulation constraints
             tmp = np.array([-C[0,1], C[0,0], -C[0,3], C[0,2], -C[0,5], C[0,4], 0, 0, 0]).astype(config.np_dtype)
-            # tmp = np.array([0, -C[0,2], C[0,1], -C[0,4], C[0,3], -C[0,6], C[0,5], 0, 0]).astype(config.np_dtype)
+            tmp = np.array([0, -C[0,2], C[0,1], -C[0,4], C[0,3], -C[0,6], C[0,5], 0, 0]).astype(config.np_dtype)
             C[1,:] = tmp
 
-            ueq = G
-            threshold = 0.1
-            lb[1] = C[1,:] @ ueq - 10*(CBF-threshold)*(CBF+threshold)
+            ueq = np.zeros_like(u_nominal)
+            threshold = 0.01
+            lb[1] = C[1,:] @ ueq + 5*(1-CBF/threshold)
             ub[1] = np.inf
-
 
             # CBF-QP constraints
             g = -u_nominal
             C[2:2+n_controls,:] = np.eye(n_controls, dtype=config.np_dtype)
-            lb[2:] = input_torque_lb
-            ub[2:] = input_torque_ub
+            lb[2:] = joint_acc_lb
+            ub[2:] = joint_acc_ub
             cbf_qp.update(g=g, C=C, l=lb, u=ub)
             time_cbf_qp_start = time.time()
             cbf_qp.solve()
@@ -404,6 +413,7 @@ if __name__ == "__main__":
             phi2_tmp = 0
 
         # Step the environment
+        u = M_mj @ u + nle_mj
         u = u[:7]
         finger_pos = 0.01
         info = env.step(tau=u, finger_pos=finger_pos)

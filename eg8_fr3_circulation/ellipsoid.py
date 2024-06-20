@@ -56,10 +56,10 @@ if __name__ == "__main__":
     joint_lb = np.array(joint_limits_config["lb"], dtype=config.np_dtype)
     joint_ub = np.array(joint_limits_config["ub"], dtype=config.np_dtype)
 
-    # Input torque limits
-    input_torque_limits_config = test_settings["input_torque_limits_config"]
-    input_torque_lb = np.array(input_torque_limits_config["lb"], dtype=config.np_dtype)
-    input_torque_ub = np.array(input_torque_limits_config["ub"], dtype=config.np_dtype)
+    # Joint acceleration limits
+    joint_acc_limits_config = test_settings["joint_acceleration_limits_config"]
+    joint_acc_lb = np.array(joint_acc_limits_config["lb"], dtype=config.np_dtype)
+    joint_acc_ub = np.array(joint_acc_limits_config["ub"], dtype=config.np_dtype)
 
     # Create and reset simulation
     cam_distance = simulator_config["cam_distance"]
@@ -77,23 +77,25 @@ if __name__ == "__main__":
     
     # Load the obstacle
     obstacle_config = test_settings["obstacle_config"]
-    obs_pos_np = np.array(obstacle_config["pos"], dtype=config.np_dtype)
-    obs_quat_np = np.array(obstacle_config["quat"], dtype=config.np_dtype) # (x, y, z, w)
-    obs_size_np = np.array(obstacle_config["size"])
-    obs_coef_np = np.diag(1/obs_size_np**2)
-    obs_R_np = Rotation.from_quat(obs_quat_np).as_matrix()
-    obs_coef_np = obs_R_np @ obs_coef_np @ obs_R_np.T
-    obstacle_SFs = []
-    SF = doh.Ellipsoid3d(False, obs_coef_np, obs_pos_np)
-    obstacle_SFs.append(SF)
+    obstacle_SFs = {}
+    for (i, obs_key) in enumerate(obstacle_config.keys()):
+        obstacle = obstacle_config[obs_key]
+        obs_pos_np = np.array(obstacle["pos"], dtype=config.np_dtype)
+        obs_quat_np = np.array(obstacle["quat"], dtype=config.np_dtype) # (x, y, z, w)
+        obs_size_np = np.array(obstacle["size"])
+        obs_coef_np = np.diag(1/obs_size_np**2)
+        obs_R_np = Rotation.from_quat(obs_quat_np).as_matrix()
+        obs_coef_np = obs_R_np @ obs_coef_np @ obs_R_np.T
+        SF = doh.Ellipsoid3d(False, obs_coef_np, obs_pos_np)
+        obstacle_SFs[obs_key] = SF
 
     # Load the bounding shape coefficients
     BB_coefs = BoundingShapeCoef()
-    robot_SFs = []
-    for name_BB in CBF_config["selected_bbs"]:
-        quadratic_coef = BB_coefs.coefs[name_BB]
+    robot_SFs = {}
+    for (i, bb_key) in enumerate(CBF_config["selected_bbs"]):
+        quadratic_coef = BB_coefs.coefs[bb_key]
         SF = doh.Ellipsoid3d(True, quadratic_coef, np.zeros(3))
-        robot_SFs.append(SF)
+        robot_SFs[bb_key] = SF
     
     # Compute desired trajectory
     t_final = 20
@@ -212,7 +214,7 @@ if __name__ == "__main__":
         q_dtdt = q_dtdt_task + S_null @ (- Kp_joint @ e_joint - Kd_joint @ e_joint_dot)
 
         # Map to torques
-        u_nominal = nle + M_mj @ q_dtdt
+        u_nominal = q_dtdt
 
         time_diff_helper_tmp = 0
         if CBF_config["active"]:
@@ -226,55 +228,56 @@ if __name__ == "__main__":
             n_obs = len(obstacle_SFs)
 
             for kk in range(len(selected_BBs)):
-                name_BB = selected_BBs[kk]
-                P_BB = info["P_"+name_BB]
-                R_BB = info["R_"+name_BB]
-                J_BB = info["J_"+name_BB]
-                dJdq_BB = info["dJdq_"+name_BB]
+                bb_key = selected_BBs[kk]
+                P_BB = info["P_"+bb_key]
+                R_BB = info["R_"+bb_key]
+                J_BB = info["J_"+bb_key]
+                dJdq_BB = info["dJdq_"+bb_key]
                 v_BB = J_BB @ dq
-                D_BB = BB_coefs.coefs[name_BB]
+                D_BB = BB_coefs.coefs[bb_key]
                 quat_BB = get_quat_from_rot_matrix(R_BB)
 
-                dx = np.zeros(7, dtype=config.np_dtype)
-                dx[0:3] = v_BB[0:3]
-                Q = get_Q_matrix_from_quat(quat_BB) # shape (4,3)
-                dquat = 0.5 * Q @ v_BB[3:6] # shape (4,)
-                dx[3:7] = dquat 
-                dQ = get_dQ_matrix(dquat) # shape (4,3)
-                tmp_vec = np.zeros(7, dtype=config.np_dtype)
-                tmp_vec[3:7] = 0.5 * dQ @ v_BB[3:6] # shape (4,)
-                tmp_mat = np.zeros((7,6), dtype=config.np_dtype)
-                tmp_mat[0:3,0:3] = np.eye(3, dtype=config.np_dtype)
-                tmp_mat[3:7,3:6] = 0.5 * Q
+                A_BB = np.zeros((7,6), dtype=config.np_dtype)
+                Q_BB = get_Q_matrix_from_quat(quat_BB) # shape (4,3)
+                A_BB[0:3,0:3] = np.eye(3, dtype=config.np_dtype)
+                A_BB[3:7,3:6] = Q_BB
+                dx_BB = A_BB @ v_BB
 
-                SF1 = robot_SFs[kk]
+                dquat_BB = 0.5 * Q_BB @ v_BB[3:6] # shape (4,)
+                dQ_BB = get_dQ_matrix(dquat_BB) # shape (4,3)
+                dA_BB = np.zeros((7,6), dtype=config.np_dtype)
+                dA_BB[3:7,3:6] = dQ_BB
 
-                for (ll, SF_obs) in enumerate(obstacle_SFs):
-                    SF2 = obstacle_SFs[ll]
+                SF1 = robot_SFs[bb_key]
+
+                for (ll, obs_key) in enumerate(obstacle_SFs.keys()):
+                    SF2 = obstacle_SFs[obs_key]
                     time_diff_helper_tmp -= time.time()
                     p_rimon = doh.rimonMethod3d(SF1, P_BB, quat_BB, SF2, np.zeros(3), np.array([0,0,0,1]))
                     alpha, alpha_dx, alpha_dxdx = doh.getGradientAndHessian3d(p_rimon, SF1, P_BB, quat_BB,
                                                                               SF2, np.zeros(3), np.array([0,0,0,1]))
                     time_diff_helper_tmp += time.time()
 
-                    # CBF-QP constraints
-                    dCBF =  alpha_dx @ dx # scalar
-                    CBF = alpha - alpha0[kk]
-                    phi1 = dCBF + gamma1[kk] * CBF
+                    h = alpha - alpha0
+                    h_dx = alpha_dx
+                    h_dxdx = alpha_dxdx
 
-                    C[kk*n_obs+ll,:] = alpha_dx @ tmp_mat @ J_BB @ Minv_mj
-                    lb[kk*n_obs+ll] = - gamma2[kk]*phi1 - gamma1[kk]*dCBF - dx.T @ alpha_dxdx @ dx - alpha_dx @ tmp_vec \
-                            - alpha_dx @ tmp_mat @ dJdq_BB + alpha_dx @ tmp_mat @ J_BB @ Minv_mj @ nle_mj + compensation[kk]
+                    dh = h_dx @ dx_BB
+                    phi1 = dh + gamma1 * h
+                    
+                    C[kk*n_obs+ll,:] = h_dx @ A_BB @ J_BB
+                    lb[kk*n_obs+ll] = - gamma2*phi1 - gamma1*dh - dx_BB.T @ h_dxdx @ dx_BB - h_dx @ dA_BB @ v_BB \
+                        - h_dx @ A_BB @ dJdq_BB  + compensation
                     ub[kk*n_obs+ll] = np.inf
 
-                    CBF_tmp[kk*n_obs+ll] = CBF
+                    CBF_tmp[kk*n_obs+ll] = h
                     phi1_tmp[kk*n_obs+ll] = phi1
 
             # CBF-QP constraints
             g = -u_nominal
             C[n_CBF:n_CBF+n_controls,:] = np.eye(n_controls, dtype=config.np_dtype)
-            lb[n_CBF:] = input_torque_lb
-            ub[n_CBF:] = input_torque_ub
+            lb[n_CBF:] = joint_acc_lb
+            ub[n_CBF:] = joint_acc_ub
             cbf_qp.update(g=g, C=C, l=lb, u=ub)
             time_cbf_qp_start = time.time()
             cbf_qp.solve()
@@ -294,6 +297,7 @@ if __name__ == "__main__":
             phi2_tmp = np.zeros(n_CBF, dtype=config.np_dtype)
 
         # Step the environment
+        u = M_mj @ u + nle_mj
         u = u[:7]
         finger_pos = 0.01
         info = env.step(tau=u, finger_pos=finger_pos)

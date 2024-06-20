@@ -70,8 +70,10 @@ if __name__ == "__main__":
     initial_joint_angles = test_settings["initial_joint_angles"]
     dt = 1.0/240.0
 
-    env = FR3MuJocoEnv(xml_name="fr3_on_table_with_bounding_boxes_circulation", base_pos=base_pos, base_quat=base_quat,
+    env = FR3MuJocoEnv(xml_name="fr3_on_table_with_bounding_boxes_circulation_polytope", base_pos=base_pos, base_quat=base_quat,
                     cam_distance=cam_distance, cam_azimuth=cam_azimuth, cam_elevation=cam_elevation, cam_lookat=cam_lookat, dt=dt)
+    # env = FR3MuJocoEnv(xml_name="fr3_on_table_with_bounding_boxes_circulation_ellipsoid", base_pos=base_pos, base_quat=base_quat,
+    #                 cam_distance=cam_distance, cam_azimuth=cam_azimuth, cam_elevation=cam_elevation, cam_lookat=cam_lookat, dt=dt)
     info = env.reset(initial_joint_angles)
     
     time_prev = time.time()
@@ -100,16 +102,25 @@ if __name__ == "__main__":
             time_prev = time.time()
 
         # Primary obejctive: tracking control
-        P_d = np.array([0.2, 0.4, 1.4])
+        P_d = np.array([0.1, 0.0, 1.8])
+        # P_d = np.array([0.5, 0.0, 0.85])
+        # P_d = np.array([0.25, 0.4, 0.85])
+
         K_p_pos = np.diag([100,100,100]).astype(config.np_dtype)
         K_d_pos = np.diag([50,50,50]).astype(config.np_dtype)
         e_pos = P_EE - P_d # shape (3,)
         e_pos_dt = v_EE[:3] # shape (3,)
         v_dt = - K_p_pos @ e_pos - K_d_pos @ e_pos_dt
 
-        R_d = np.array([[1, 0, 0],
-                        [0, -1, 0],
-                        [0, 0, -1]], dtype=config.np_dtype)
+        # R_d = np.array([[1, 0, 0],
+        #                 [0, -1, 0],
+        #                 [0, 0, -1]], dtype=config.np_dtype)
+        roll = np.pi
+        pitch = -np.pi/4
+        yaw = 0
+        R_d = Rotation.from_euler('xyz', [roll, pitch, yaw]).as_matrix()
+
+        # Create a Rotation object from RPY
         K_p_rot = np.diag([200,200,200]).astype(config.np_dtype)
         K_d_rot = np.diag([100,100,100]).astype(config.np_dtype)
         e_rot = SO3(R_EE @ R_d.T).log() # shape (3,)
