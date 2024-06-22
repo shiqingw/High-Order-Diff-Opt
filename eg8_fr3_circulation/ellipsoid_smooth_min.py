@@ -404,8 +404,8 @@ if __name__ == "__main__":
         plt.plot(times, desired_controls[:,i], color="tab:blue", linestyle=":", 
                 label="u_{:d} nominal".format(i+1))
         plt.plot(times, controls[:,i], color="tab:blue", linestyle="-", label="u_{:d}".format(i+1))
-        plt.axhline(y = input_torque_lb[i], color = 'black', linestyle = 'dotted', linewidth = 2)
-        plt.axhline(y = input_torque_ub[i], color = 'black', linestyle = 'dotted', linewidth = 2)
+        plt.axhline(y = joint_acc_lb[i], color = 'black', linestyle = 'dotted', linewidth = 2)
+        plt.axhline(y = joint_acc_ub[i], color = 'black', linestyle = 'dotted', linewidth = 2)
         plt.legend()
         plt.tight_layout()
         plt.savefig(os.path.join(results_dir, 'plot_controls_{:d}.pdf'.format(i+1)))

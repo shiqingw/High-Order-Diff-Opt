@@ -26,7 +26,7 @@ import cvxpy as cp
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--exp_num', default=4, type=int, help='test case number')
+    parser.add_argument('--exp_num', default=6, type=int, help='test case number')
     args = parser.parse_args()
 
     # Create result directory
@@ -72,9 +72,15 @@ if __name__ == "__main__":
     initial_joint_angles = test_settings["initial_joint_angles"]
     dt = 1.0/240.0
 
-    env = FR3MuJocoEnv(xml_name="fr3_on_table_with_bounding_boxes_circulation_polytope", base_pos=base_pos, base_quat=base_quat,
+    env = FR3MuJocoEnv(xml_name="fr3_on_table_with_bounding_boxes_circulation_polytope2", base_pos=base_pos, base_quat=base_quat,
                     cam_distance=cam_distance, cam_azimuth=cam_azimuth, cam_elevation=cam_elevation, cam_lookat=cam_lookat, dt=dt)
     info = env.reset(initial_joint_angles)
+
+    # cvxpy config
+    cvxpy_config = test_settings["cvxpy_config"]
+    obstacle_kappa = cvxpy_config["obstacle_kappa"]
+    cp_solver = cp.SCS if cvxpy_config["solver"] == "SCS" else cp.ECOS
+    cp_max_iters = cvxpy_config["max_iters"]
 
     # Load the bounding shape coefficients
     BB_coefs = BoundingShapeCoef()
@@ -85,8 +91,6 @@ if __name__ == "__main__":
         robot_SFs[bb_key] = SF
 
     # Obstacle
-    cvxpy_config = test_settings["cvxpy_config"]
-    obstacle_kappa = cvxpy_config["obstacle_kappa"]
     obstacle_config = test_settings["obstacle_config"]
     n_obstacle = len(obstacle_config)
     obstacle_SFs = {}
@@ -136,27 +140,29 @@ if __name__ == "__main__":
             _ellipse_Q_sqrt.value = ellipse_Q_sqrt_np
             _ellipse_b.value = -2 * ellipse_Q_np @ bb_pos_np
             _ellipse_c.value = bb_pos_np.T @ ellipse_Q_np @ bb_pos_np
-            problem.solve(warm_start=True, solver=cp.SCS)
+            problem.solve(warm_start=True, solver=cp_solver, max_iters=cp_max_iters)
             cp_problem_bb[obs_key] = problem
 
         cp_problems[bb_key] = cp_problem_bb
 
     # Compute desired trajectory
-    t_final = 60
-    P_EE_0 = np.array([0.1, 0.0, 1.8])
-    P_EE_1 = np.array([0.55, 0.0, 0.9])
-    P_EE_2 = np.array([0.55, 0.0, 0.89])
+    t_final = 15
+    P_EE_0 = np.array([0.2, 0.2, 0.86])
+    P_EE_1 = np.array([0.2, -0.3, 0.86])
+    P_EE_2 = np.array([0.2, -0.3, 0.86])
     via_points = np.array([P_EE_0, P_EE_1, P_EE_2])
     target_time = np.array([0, 5, t_final])
     Ts = 0.01
     traj_line = PositionTrapezoidalTrajectory(via_points, target_time, T_antp=0.2, Ts=Ts)
 
-    R_EE_0 = Rotation.from_euler('xyz', [np.pi, -np.pi/4, 0]).as_matrix()
+    R_EE_0 = np.array([[1, 0, 0],
+                        [0, -1, 0],
+                        [0, 0, -1]], dtype=config.np_dtype)
     R_EE_1 = np.array([[1, 0, 0],
                         [0, -1, 0],
                         [0, 0, -1]], dtype=config.np_dtype)
     R_EE_2 = R_EE_1
-    orientations = np.array([R_EE_0, R_EE_1], dtype=config.np_dtype)
+    orientations = np.array([R_EE_0, R_EE_1, R_EE_2], dtype=config.np_dtype)
     target_time = np.array([0, 5, t_final])
     traj_orientation = OrientationTrapezoidalTrajectory(orientations, target_time, Ts=Ts)
 
@@ -332,7 +338,7 @@ if __name__ == "__main__":
 
                         # solve cvxpy problem
                         time_cvxpy_tmp -= time.time()
-                        cp_problems[bb_key][obs_key].solve(solver=cp.SCS, warm_start=True)
+                        cp_problems[bb_key][obs_key].solve(warm_start=True, solver=cp_solver, max_iters=cp_max_iters)
                         time_cvxpy_tmp += time.time()
 
                         p_sol_np = np.squeeze(_p.value)
@@ -355,7 +361,7 @@ if __name__ == "__main__":
                         all_h[kk*n_obs+ll] = np.inf
                         CBF_tmp[kk*n_obs+ll] = 0
             
-            rho = 2
+            rho = 10
             min_h = np.min(all_h)
             indices = np.where(rho*(all_h - min_h) < 708)[0]
             h_selected = all_h[indices]
@@ -377,13 +383,13 @@ if __name__ == "__main__":
             ub[0] = np.inf
 
             # Circulation constraints
-            tmp = np.array([-C[0,1], C[0,0], -C[0,3], C[0,2], -C[0,5], C[0,4], 0, 0, 0]).astype(config.np_dtype)
+            # tmp = np.array([-C[0,1], C[0,0], -C[0,3], C[0,2], -C[0,5], C[0,4], 0, 0, 0]).astype(config.np_dtype)
             tmp = np.array([0, -C[0,2], C[0,1], -C[0,4], C[0,3], -C[0,6], C[0,5], 0, 0]).astype(config.np_dtype)
             C[1,:] = tmp
 
             ueq = np.zeros_like(u_nominal)
             threshold = 0.01
-            lb[1] = C[1,:] @ ueq + 5*(1-CBF/threshold)
+            lb[1] = C[1,:] @ ueq + 0.1*(1-CBF/threshold)
             ub[1] = np.inf
 
             # CBF-QP constraints

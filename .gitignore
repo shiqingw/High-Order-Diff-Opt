@@ -1,5 +1,5 @@
-.pkl
-.mp4
+*.pkl
+*.mp4
 # Mac
 .DS_Store
 

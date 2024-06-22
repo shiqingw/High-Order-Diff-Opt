@@ -28,7 +28,7 @@ class FR3MuJocoEnv:
         self.pin_robot = RobotWrapper.BuildFromURDF(robot_URDF, package_directory)
 
         if render:
-            self.viewer = mujoco.viewer.launch_passive(self.model, self.data)
+            self.viewer = mujoco.viewer.launch_passive(self.model, self.data, show_left_ui=False, show_right_ui=False)
             self.render = True
             self.viewer.cam.distance = cam_distance
             self.viewer.cam.azimuth = cam_azimuth

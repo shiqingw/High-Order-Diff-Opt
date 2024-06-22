@@ -145,7 +145,7 @@ if __name__ == "__main__":
     t_final = 60
     P_EE_0 = np.array([0.1, 0.0, 1.8])
     P_EE_1 = np.array([0.55, 0.0, 0.9])
-    P_EE_2 = np.array([0.55, 0.0, 0.89])
+    P_EE_2 = np.array([0.55, 0.0, 0.9])
     via_points = np.array([P_EE_0, P_EE_1, P_EE_2])
     target_time = np.array([0, 5, t_final])
     Ts = 0.01
@@ -447,8 +447,8 @@ if __name__ == "__main__":
         plt.plot(times, desired_controls[:,i], color="tab:blue", linestyle=":", 
                 label="u_{:d} nominal".format(i+1))
         plt.plot(times, controls[:,i], color="tab:blue", linestyle="-", label="u_{:d}".format(i+1))
-        plt.axhline(y = input_torque_lb[i], color = 'black', linestyle = 'dotted', linewidth = 2)
-        plt.axhline(y = input_torque_ub[i], color = 'black', linestyle = 'dotted', linewidth = 2)
+        plt.axhline(y = joint_acc_lb[i], color = 'black', linestyle = 'dotted', linewidth = 2)
+        plt.axhline(y = joint_acc_ub[i], color = 'black', linestyle = 'dotted', linewidth = 2)
         plt.legend()
         plt.tight_layout()
         plt.savefig(os.path.join(results_dir, 'plot_controls_{:d}.pdf'.format(i+1)))

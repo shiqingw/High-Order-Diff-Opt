@@ -12,7 +12,7 @@
     <asset>
         <include file="./table_assets.xml"/>
         <include file="./fr3_assets.xml"/>
-        <mesh name="polygon" vertex="-0.2 -0.01 -0.1  0.2 -0.01 -0.1  0.2 0.01 -0.1  -0.2 0.01 -0.1  -0.2 -0.01 0.1  0.2 -0.01 0.1  0.2 0.01 0.1  -0.2 0.01 0.1"/>
+        <mesh name="polygon" vertex="-0.2 -0.01 -0.12  0.2 -0.01 -0.12  0.2 0.01 -0.12  -0.2 0.01 -0.12  -0.2 -0.01 0.12  0.2 -0.01 0.12  0.2 0.01 0.12  -0.2 0.01 0.12"/>
     </asset>
 
     <default>
@@ -26,8 +26,10 @@
         <include file="./table_body.xml"/>
         <include file="./fr3_on_table_with_bounding_boxes_circulation_polytope_body.xml"/>
 
-        <geom type="mesh" mesh="polygon" pos="0.25 0.0 1.1" quat="0.9238795325112867 0.0 0.0 0.3826834323650898" rgba="0.5 0.5 0.5 1" contype="0" conaffinity="0"/>
-        <geom type="mesh" mesh="polygon" pos="0.25 0.0 1.1" quat="0.9238795325112867 0.0 0.0 -0.3826834323650898" rgba="0.5 0.5 0.5 1" contype="0" conaffinity="0"/>
+        <geom type="mesh" mesh="polygon" pos="0.2 0.0 0.94" quat="1 0 0 0" rgba="0.5 0.5 0.5 1" contype="0" conaffinity="0"/>
+        <geom type="mesh" mesh="polygon" pos="0.2 0.4 0.94" quat="1 0 0 0" rgba="0.5 0.5 0.5 1" contype="0" conaffinity="0"/>
+        <geom type="mesh" mesh="polygon" pos="0.0 0.2 0.94" quat="1 0 0 1" rgba="0.5 0.5 0.5 1" contype="0" conaffinity="0"/>
+        <geom type="mesh" mesh="polygon" pos="0.4 0.2 0.94" quat="1 0 0 1" rgba="0.5 0.5 0.5 1" contype="0" conaffinity="0"/>
     </worldbody>
 
     <include file="./fr3_motors.xml"/>
