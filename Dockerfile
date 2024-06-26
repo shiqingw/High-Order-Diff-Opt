@@ -12,9 +12,6 @@ ENV PATH="/usr/local/bin:${PATH}"
 # System packages 
 RUN apt-get update \
     && apt-get install -yq curl wget jq vim software-properties-common lsb-release net-tools\
-    # latex packages
-    && texlive-full cm-super\
-    && texhash \
     # update cmake
     && apt-key adv --fetch-keys https://apt.kitware.com/keys/kitware-archive-latest.asc \
     && apt-add-repository "deb https://apt.kitware.com/ubuntu/ $(lsb_release -cs) main" \
@@ -40,9 +37,17 @@ ENV PATH /opt/conda/bin:$PATH
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
     build-essential cmake g++ git wget libatomic1 gfortran perl m4 pkg-config \
-    liblapack-dev libopenblas-dev libgl1-mesa-glx libpoco-dev libeigen3-dev \
+    liblapack-dev libopenblas-dev libopenblas-base libgl1-mesa-glx libpoco-dev libeigen3-dev \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
+
+# latex packages
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends texlive-full cm-super\
+    && texhash \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
 
 # Update Python in the base environment to 3.11
 RUN conda install python==3.11 \
