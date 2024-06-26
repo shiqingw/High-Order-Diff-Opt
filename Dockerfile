@@ -12,6 +12,9 @@ ENV PATH="/usr/local/bin:${PATH}"
 # System packages 
 RUN apt-get update \
     && apt-get install -yq curl wget jq vim software-properties-common lsb-release net-tools\
+    # latex packages
+    && texlive-full cm-super\
+    && texhash \
     # update cmake
     && apt-key adv --fetch-keys https://apt.kitware.com/keys/kitware-archive-latest.asc \
     && apt-add-repository "deb https://apt.kitware.com/ubuntu/ $(lsb_release -cs) main" \
@@ -52,6 +55,9 @@ RUN pip install numpy==1.24.4 \
     proxsuite \
     pin==2.6.18 \
     mujoco \
+    cvxpy \
+    sympy \
+    posix_ipc \
     && rm -rf ~/.cache/pip
 
 # Install pybind11, xtensor, xtensor-blas
@@ -76,6 +82,12 @@ RUN git clone https://github.com/shiqingw/xtensor-python.git \
 RUN git clone https://github.com/shiqingw/Scaling-Functions-Helper.git\
     && cd Scaling-Functions-Helper \
     && pip install -e .
+
+# Install liegroups
+RUN git clone https://github.com/utiasSTARS/liegroups.git \
+&& cd liegroups \
+&& pip install -e . \
+&& cd ..
 
 # Install FR3Py
 RUN git clone https://github.com/Rooholla-KhorramBakht/FR3Py.git \
@@ -123,11 +135,6 @@ RUN cd FR3Py/fr3_bridge \
     && make install \
     && cd ../.. 
 
-# Install liegroups
-RUN git clone https://github.com/utiasSTARS/liegroups.git \
-    && cd liegroups \
-    && pip install -e . \
-    && cd ..
 
 # # Setting up the real-time kernel
 # RUN apt-get update \

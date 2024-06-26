@@ -274,7 +274,7 @@ if __name__ == "__main__":
             id_geom_offset = env.viewer.user_scn.ngeom
 
     # Compute desired trajectory
-    t_final = 30
+    t_final = 10
     P_EE_0 = np.array([0.2, 0.2, 0.86])
     P_EE_1 = np.array([0.2, -0.3, 0.86])
     P_EE_2 = np.array([0.2, -0.3, 0.86])
@@ -379,7 +379,7 @@ if __name__ == "__main__":
     all_info = []
 
     # Start a pool of workers
-    NUM_WORKERS = multiprocessing.cpu_count() - 1
+    NUM_WORKERS = 12
     with ProcessPoolExecutor(max_workers=NUM_WORKERS) as executor:
         # Forward simulate the system
         P_EE_prev = info["P_EE"]

@@ -15,7 +15,7 @@ from fr3_envs.fr3_mj_env_collision import FR3MuJocoEnv
 from fr3_envs.bounding_shape_coef_mj import BoundingShapeCoef
 from cores.utils.utils import seed_everything, save_dict
 from cores.utils.proxsuite_utils import init_proxsuite_qp
-import scalingFunctionHelper as doh
+import scalingFunctionsHelper as doh
 from cores.utils.rotation_utils import get_quat_from_rot_matrix, get_Q_matrix_from_quat, get_dQ_matrix
 from cores.configuration.configuration import Configuration
 from scipy.spatial.transform import Rotation
@@ -181,7 +181,7 @@ if __name__ == "__main__":
             id_geom_offset = env.viewer.user_scn.ngeom
 
     # Compute desired trajectory
-    t_final = 30
+    t_final = 15
     P_EE_0 = np.array([0.2, 0.2, 0.86])
     P_EE_1 = np.array([0.2, -0.3, 0.86])
     P_EE_2 = np.array([0.2, -0.3, 0.86])
@@ -460,6 +460,11 @@ if __name__ == "__main__":
 
     print("==> Save all_info")
     save_dict(all_info, os.path.join(results_dir, 'all_info.pkl'))
+
+    # Print solving time
+    print("==> Control loop solving time: {:.5f} s".format(np.mean(time_control_loop)))
+    print("==> CVXPY and diff opt solving time: {:.5f} s".format(np.mean(time_cvxpy_and_diff_helper)))
+    print("==> CBF-QP solving time: {:.5f} s".format(np.mean(time_cbf_qp)))
     
     # Visualization
     print("==> Draw plots")
@@ -544,10 +549,5 @@ if __name__ == "__main__":
     plt.tight_layout()
     plt.savefig(os.path.join(results_dir, 'plot_time_control_loop.pdf'))
     plt.close(fig)
-
-    # Print solving time
-    print("==> Control loop solving time: {:.5f} s".format(np.mean(time_control_loop)))
-    print("==> CVXPY and diff opt solving time: {:.5f} s".format(np.mean(time_cvxpy_and_diff_helper)))
-    print("==> CBF-QP solving time: {:.5f} s".format(np.mean(time_cbf_qp)))
 
     print("==> Done!")
