@@ -99,6 +99,7 @@
 
     "cvxpy_config":{
         "solver": "SCS",
+        "max_iters": 100,
         "obstacle_kappa": 80,
         "x_max": 80
     }

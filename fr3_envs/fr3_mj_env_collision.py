@@ -163,7 +163,7 @@ class FR3MuJocoEnv:
             # Advanced calculation
             info[f"dJdq_{frame_name}"] = pin.getFrameClassicalAcceleration(
                 self.pin_robot.model, self.pin_robot.data, frame_id, self.jacobian_frame
-            )
+            ).vector
 
         M, Minv, nle = self.get_dynamics(q, dq)
         info["M"] = M

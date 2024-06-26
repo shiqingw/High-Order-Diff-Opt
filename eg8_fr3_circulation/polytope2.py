@@ -77,9 +77,10 @@ if __name__ == "__main__":
     info = env.reset(initial_joint_angles)
 
     # cvxpy config
+    solvers = {'ECOS': cp.ECOS, 'SCS': cp.SCS, 'CLARABEL': cp.CLARABEL}
     cvxpy_config = test_settings["cvxpy_config"]
     obstacle_kappa = cvxpy_config["obstacle_kappa"]
-    cp_solver = cp.SCS if cvxpy_config["solver"] == "SCS" else cp.ECOS
+    cp_solver = solvers[cvxpy_config["solver"]]
     cp_max_iters = cvxpy_config["max_iters"]
 
     # Load the bounding shape coefficients
@@ -112,10 +113,10 @@ if __name__ == "__main__":
     print("==> Define cvxpy problem")
     x_max_np = cvxpy_config["x_max"]
     cp_problems = {}
-    _p = cp.Variable(3)
     _ellipse_Q_sqrt = cp.Parameter((3,3))
     _ellipse_b = cp.Parameter(3)
     _ellipse_c = cp.Parameter()
+    _p = cp.Variable(3)
 
     for (i, bb_key) in enumerate(CBF_config["selected_bbs"]):
         cp_problem_bb = {}
@@ -140,13 +141,13 @@ if __name__ == "__main__":
             _ellipse_Q_sqrt.value = ellipse_Q_sqrt_np
             _ellipse_b.value = -2 * ellipse_Q_np @ bb_pos_np
             _ellipse_c.value = bb_pos_np.T @ ellipse_Q_np @ bb_pos_np
-            problem.solve(warm_start=True, solver=cp_solver, max_iters=cp_max_iters)
+            problem.solve(warm_start=True, solver=cp_solver)
             cp_problem_bb[obs_key] = problem
 
         cp_problems[bb_key] = cp_problem_bb
 
     # Compute desired trajectory
-    t_final = 60
+    t_final = 30
     P_EE_0 = np.array([0.2, 0.2, 0.86])
     P_EE_1 = np.array([0.2, -0.3, 0.86])
     P_EE_2 = np.array([0.2, -0.3, 0.86])
@@ -336,7 +337,7 @@ if __name__ == "__main__":
 
                         # solve cvxpy problem
                         time_cvxpy_tmp -= time.time()
-                        cp_problems[bb_key][obs_key].solve(warm_start=True, solver=cp_solver, max_iters=cp_max_iters)
+                        cp_problems[bb_key][obs_key].solve(warm_start=True, solver=cp_solver)
                         time_cvxpy_tmp += time.time()
 
                         p_sol_np = np.squeeze(_p.value)

@@ -10,7 +10,7 @@ class Configuration(object):
         super(Configuration, self).__init__()
 
         # Dtype for computations
-        self.np_dtype = np.float32
+        self.np_dtype = np.float64
         self.pt_dtype = torch.float32
         self.torch_dtype = torch.float32
         self.dpi = 30
