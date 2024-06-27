@@ -94,41 +94,36 @@ class SolverNode:
 
     def solve(self):
         # Get shared memory
+        time_1 = time.time()
         itemsize = np.dtype(self.np_dtype).itemsize
         dq_shm = posix_ipc.SharedMemory(self.dq_shm_id)
         dq_mapfile = mmap.mmap(dq_shm.fd, 7*itemsize)
         dq_shm.close_fd()
-        # dq = np.memmap(dq_mapfile, dtype=self.np_dtype, mode='r', shape=(7,))
         dq = np.ndarray((7,), dtype=self.np_dtype, buffer=dq_mapfile)
 
         all_J_shm = posix_ipc.SharedMemory(self.all_J_shm_id)
         all_J_mapfile = mmap.mmap(all_J_shm.fd, self.n_frames*6*7*itemsize)
         all_J_shm.close_fd()
-        # all_J = np.memmap(all_J_mapfile, dtype=self.np_dtype, mode='r', shape=(self.n_frames,6,7))
         all_J = np.ndarray((self.n_frames,6,7), dtype=self.np_dtype, buffer=all_J_mapfile)
 
         all_quat_shm = posix_ipc.SharedMemory(self.all_quat_shm_id)
         all_quat_mapfile = mmap.mmap(all_quat_shm.fd, self.n_frames*4*itemsize)
         all_quat_shm.close_fd()
-        # all_quat = np.memmap(all_quat_mapfile, dtype=self.np_dtype, mode='r', shape=(self.n_frames,4))
         all_quat = np.ndarray((self.n_frames,4), dtype=self.np_dtype, buffer=all_quat_mapfile)
 
         all_R_shm = posix_ipc.SharedMemory(self.all_R_shm_id)
         all_R_mapfile = mmap.mmap(all_R_shm.fd, self.n_frames*3*3*itemsize)
         all_R_shm.close_fd()
-        # all_R = np.memmap(all_R_mapfile, dtype=self.np_dtype, mode='r', shape=(self.n_frames,3,3))
         all_R = np.ndarray((self.n_frames,3,3), dtype=self.np_dtype, buffer=all_R_mapfile)
 
         all_P_shm = posix_ipc.SharedMemory(self.all_P_shm_id)
         all_P_mapfile = mmap.mmap(all_P_shm.fd, self.n_frames*3*itemsize)
         all_P_shm.close_fd()
-        # all_P = np.memmap(all_P_mapfile, dtype=self.np_dtype, mode='r', shape=(self.n_frames,3))
         all_P = np.ndarray((self.n_frames,3), dtype=self.np_dtype, buffer=all_P_mapfile)
 
         all_dJdq_shm = posix_ipc.SharedMemory(self.all_dJdq_shm_id)
         all_dJdq_mapfile = mmap.mmap(all_dJdq_shm.fd, self.n_frames*6*itemsize)
         all_dJdq_shm.close_fd()
-        # all_dJdq = np.memmap(all_dJdq_mapfile, dtype=self.np_dtype, mode='r', shape=(self.n_frames,6))
         all_dJdq = np.ndarray((self.n_frames,6), dtype=self.np_dtype, buffer=all_dJdq_mapfile)
 
         P_ = all_P[self.frame_id, :]
@@ -379,6 +374,7 @@ if __name__ == "__main__":
     all_info = []
 
     # Start a pool of workers
+    # NUM_WORKERS = multiprocessing.cpu_count() - 1
     NUM_WORKERS = 12
     with ProcessPoolExecutor(max_workers=NUM_WORKERS) as executor:
         # Forward simulate the system

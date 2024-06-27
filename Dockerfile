@@ -100,45 +100,45 @@ RUN git clone https://github.com/Rooholla-KhorramBakht/FR3Py.git \
     && pip install -e .\
     && cd ..
 
-# Install libfranka
-RUN git clone --recursive https://github.com/frankaemika/libfranka --branch 0.10.0 \
-    && cd libfranka \
-    && mkdir build \
-    && cd build \
-    && cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF .. \
-    && cmake --build . \
-    && cpack -G DEB \
-    && dpkg -i libfranka*.deb \
-    && cd ../.. \
-    && rm -rf libfranka
+# # Install libfranka
+# RUN git clone --recursive https://github.com/frankaemika/libfranka --branch 0.10.0 \
+#     && cd libfranka \
+#     && mkdir build \
+#     && cd build \
+#     && cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF .. \
+#     && cmake --build . \
+#     && cpack -G DEB \
+#     && dpkg -i libfranka*.deb \
+#     && cd ../.. \
+#     && rm -rf libfranka
 
-# Install LCM
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-    libglib2.0-dev \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
-RUN git clone https://github.com/lcm-proj/lcm.git \
-    && cd lcm \
-    && mkdir build \
-    && cd build \
-    && cmake .. \
-    && make \
-    && make install \
-    && cd ../lcm-python\
-    && python -m pip install .\
-    && cd ../.. \
-    && rm -rf lcm
+# # Install LCM
+# RUN apt-get update \
+#     && apt-get install -y --no-install-recommends \
+#     libglib2.0-dev \
+#     && apt-get clean \
+#     && rm -rf /var/lib/apt/lists/*
+# RUN git clone https://github.com/lcm-proj/lcm.git \
+#     && cd lcm \
+#     && mkdir build \
+#     && cd build \
+#     && cmake .. \
+#     && make \
+#     && make install \
+#     && cd ../lcm-python\
+#     && python -m pip install .\
+#     && cd ../.. \
+#     && rm -rf lcm
 
-# Install C++ Bridge
-RUN cd FR3Py/fr3_bridge \
-    && mkdir build \
-    && cd build \
-    && cmake .. \
-    && make -j $(( $(nproc) - 1 )) \
-    && make \
-    && make install \
-    && cd ../.. 
+# # Install C++ Bridge
+# RUN cd FR3Py/fr3_bridge \
+#     && mkdir build \
+#     && cd build \
+#     && cmake .. \
+#     && make -j $(( $(nproc) - 1 )) \
+#     && make \
+#     && make install \
+#     && cd ../.. 
 
 
 # # Setting up the real-time kernel

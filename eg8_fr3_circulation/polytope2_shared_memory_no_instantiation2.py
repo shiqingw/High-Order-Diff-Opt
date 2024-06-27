@@ -268,6 +268,7 @@ class SolverNode:
         all_actuation[self.cbf_id, :] = result_[4]
         all_lb[self.cbf_id] = result_[5]
         all_ub[self.cbf_id] = result_[6]
+        return
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -341,7 +342,7 @@ if __name__ == "__main__":
             id_geom_offset = env.viewer.user_scn.ngeom
 
     # Compute desired trajectory
-    t_final = 30
+    t_final = 15
     P_EE_0 = np.array([0.2, 0.2, 0.86])
     P_EE_1 = np.array([0.2, -0.3, 0.86])
     P_EE_2 = np.array([0.2, -0.3, 0.86])

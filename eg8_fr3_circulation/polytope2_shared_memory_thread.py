@@ -18,85 +18,185 @@ from cores.utils.proxsuite_utils import init_proxsuite_qp
 import scalingFunctionsHelper as doh
 from cores.utils.rotation_utils import get_quat_from_rot_matrix, get_Q_matrix_from_quat, get_dQ_matrix
 from cores.configuration.configuration import Configuration
-from scipy.spatial.transform import Rotation
 from liegroups import SO3
 from cores.utils.trajectory_utils import PositionTrapezoidalTrajectory, OrientationTrapezoidalTrajectory
 from cores.obstacle_collections.polytope_collection import PolytopeCollection
 import scs
-import multiprocessing
-import signal
 from scipy import sparse
+import posix_ipc
+import mmap
+import multiprocessing
+from concurrent.futures.process import ProcessPoolExecutor
+from concurrent.futures import ThreadPoolExecutor
+import concurrent
 
-def init_worker():
-    signal.signal(signal.SIGINT, signal.SIG_IGN)
+def create_mapfile(shared_memory_name, size):
+    shared_memory = posix_ipc.SharedMemory(shared_memory_name, posix_ipc.O_CREX, size=size)
+    
+    # Map the shared memory to a file descriptor
+    mapfile = mmap.mmap(shared_memory.fd, size)
+    shared_memory.close_fd()  # Close the file descriptor from posix_ipc
 
-def worker_func(input_data_):
-    min_distance_, ellipse_Q_np_, ellipse_b_np_, A_obs_np_, b_obs_np_, obs_kappa_,\
-            SF1_, SF2_, P_BB_, quat_BB_, dx_BB_, v_BB_, A_BB_, J_BB_, dA_BB_,\
-            dJdq_BB_, alpha0_, gamma1_, gamma2_, compensation_ = input_data_
-    if min_distance_ < 10:
-        A_d_ = obs_kappa_ * A_obs_np_
-        b_d_ = obs_kappa_ * b_obs_np_
-        c_d_ = np.log(A_d_.shape[0])
-        n_cons_ = A_d_.shape[0]
-        n_p_ = 3
-        A_exp_ = sparse.lil_matrix((3 * n_cons_, n_p_ + n_cons_))
-        b_exp_ = np.zeros(3 * n_cons_)
-        for i in range(n_cons_):
-            A_exp_[i * 3, 0] = - A_d_[i, 0]
-            A_exp_[i * 3, 1] = - A_d_[i, 1]
-            A_exp_[i * 3, 2] = - A_d_[i, 2]
-            A_exp_[i * 3 + 2, i + n_p_] = -1
+    return mapfile
 
-            b_exp_[i * 3] = b_d_[i] - c_d_
-            b_exp_[i * 3 + 1] = 1
+def clean_shared_memory(shared_memory_name):
+    try:
+        posix_ipc.unlink_shared_memory(shared_memory_name)
+    except posix_ipc.ExistentialError:
+        pass
 
-        A_ = sparse.vstack(
-            [
-                # positive cone
-                sparse.hstack([sparse.csc_matrix((1, n_p_)), np.ones((1, n_cons_))]),
-                # exponential cones
-                A_exp_,
-            ],
-            format="csc",
-        )
+class SolverNode:
+    def __init__(self, ellipsoid_quadratic_coef, A_obs_np, b_obs_np, obs_kappa, vertices, np_dtype, 
+                 frame_id, n_frames, dq_shm_id, all_J_shm_id, all_quat_shm_id, all_P_shm_id, 
+                 all_dJdq_shm_id, alpha0, gamma1, gamma2, compensation):
+        self.frame_id = frame_id
+        self.n_frames = n_frames 
+        self.ellipsoid_quadratic_coef = ellipsoid_quadratic_coef
+        self.vertices = vertices 
+        self.np_dtype = np_dtype
+        self.SF1 = doh.Ellipsoid3d(True, ellipsoid_quadratic_coef, np.zeros(3))
+        self.SF2 = doh.LogSumExp3d(False, A_obs_np, b_obs_np, obs_kappa)
+        self.dq_shm_id = dq_shm_id
+        self.all_J_shm_id = all_J_shm_id
+        self.all_quat_shm_id = all_quat_shm_id
+        self.all_R_shm_id = all_R_shm_id
+        self.all_P_shm_id = all_P_shm_id
+        self.all_dJdq_shm_id = all_dJdq_shm_id
+        self.alpha0 = alpha0
+        self.gamma1 = gamma1
+        self.gamma2 = gamma2
+        self.compensation = compensation
 
-        P_ = sparse.block_diag([ellipse_Q_np_, sparse.csc_matrix((n_cons_,n_cons_))], format="csc")
-        b_ = np.hstack([1, b_exp_])
-        c_ = np.hstack([0.5*ellipse_b_np_, np.zeros(n_cons_)])
+        # Preparation for SCS
+        self.n_exp_cones = A_obs_np.shape[0]
+        self.n_vars = A_obs_np.shape[1]
+        A_d = obs_kappa * A_obs_np
+        b_d = obs_kappa * b_obs_np
+        c_d = np.log(self.n_exp_cones)
+        A_exp = sparse.lil_matrix((3 * self.n_exp_cones, self.n_exp_cones + self.n_vars))
+        b_exp = np.zeros(3 * self.n_exp_cones)
+        for i in range(self.n_exp_cones):
+            A_exp[i*3, 0] = - A_d[i, 0]
+            A_exp[i*3, 1] = - A_d[i, 1]
+            A_exp[i*3, 2] = - A_d[i, 2]
+            A_exp[i*3 + 2, i + self.n_vars] = -1
+            b_exp[i*3] = b_d[i] - c_d
+            b_exp[i*3 + 1] = 1
 
-        # SCS data
-        data = dict(P=P_, A=A_, b=b_, c=c_)
-        # ep is exponential cone (primal), with n triples
-        cone = dict(l=1, ep=n_cons_)
+        self.A_scs = sparse.vstack([
+            sparse.hstack([sparse.csc_matrix((1, self.n_vars)), np.ones((1, self.n_exp_cones))]), # positive cone
+            A_exp, # exponential cones
+            ], format="csc", dtype=np_dtype)
+        self.b_scs = np.hstack([1, b_exp], dtype=np_dtype)
 
-        # Setup workspace
-        solver_ = scs.SCS(
-            data,
-            cone,
-            eps_abs=1e-5,
-            eps_rel=1e-5,
-            verbose=False
-        )
-        sol_ = solver_.solve()
-        p_sol_np_ = sol_["x"][:n_p_]
-        alpha_, alpha_dx_, alpha_dxdx_ = doh.getGradientAndHessian3d(p_sol_np_, SF1_, P_BB_, quat_BB_, 
-                                                                SF2_, np.zeros(3), np.array([0,0,0,1]))
-        h_ = alpha_ - alpha0_
-        h_dx_ = alpha_dx_
-        h_dxdx_ = alpha_dxdx_
+        self.scs_result_x = None
+        self.scs_result_y = None
+        self.scs_result_s = None
 
-        dh_ = h_dx_ @ dx_BB_
-        phi1_ = dh_ + gamma1_ * h_
-        
-        actuation_ = h_dx_ @ A_BB_ @ J_BB_
-        lb_ = - gamma2_*phi1_ - gamma1_*dh_ - dx_BB_.T @ h_dxdx_ @ dx_BB_ - h_dx_ @ dA_BB_ @ v_BB_ \
-            - h_dx_ @ A_BB_ @ dJdq_BB_ + compensation_
-        ub_ = np.inf
-        result_ = (h_, h_dx_, h_dxdx_, phi1_, actuation_, lb_, ub_)
-    else:
-        result_ = (0, np.zeros(7), np.zeros((7,7)), 0, np.zeros(9), 0, 0)
-    return result_
+    def solve(self):
+        # Get shared memory
+        time_1 = time.time()
+        itemsize = np.dtype(self.np_dtype).itemsize
+        dq_shm = posix_ipc.SharedMemory(self.dq_shm_id)
+        dq_mapfile = mmap.mmap(dq_shm.fd, 7*itemsize)
+        dq_shm.close_fd()
+        dq = np.ndarray((7,), dtype=self.np_dtype, buffer=dq_mapfile)
+
+        all_J_shm = posix_ipc.SharedMemory(self.all_J_shm_id)
+        all_J_mapfile = mmap.mmap(all_J_shm.fd, self.n_frames*6*7*itemsize)
+        all_J_shm.close_fd()
+        all_J = np.ndarray((self.n_frames,6,7), dtype=self.np_dtype, buffer=all_J_mapfile)
+
+        all_quat_shm = posix_ipc.SharedMemory(self.all_quat_shm_id)
+        all_quat_mapfile = mmap.mmap(all_quat_shm.fd, self.n_frames*4*itemsize)
+        all_quat_shm.close_fd()
+        all_quat = np.ndarray((self.n_frames,4), dtype=self.np_dtype, buffer=all_quat_mapfile)
+
+        all_R_shm = posix_ipc.SharedMemory(self.all_R_shm_id)
+        all_R_mapfile = mmap.mmap(all_R_shm.fd, self.n_frames*3*3*itemsize)
+        all_R_shm.close_fd()
+        all_R = np.ndarray((self.n_frames,3,3), dtype=self.np_dtype, buffer=all_R_mapfile)
+
+        all_P_shm = posix_ipc.SharedMemory(self.all_P_shm_id)
+        all_P_mapfile = mmap.mmap(all_P_shm.fd, self.n_frames*3*itemsize)
+        all_P_shm.close_fd()
+        all_P = np.ndarray((self.n_frames,3), dtype=self.np_dtype, buffer=all_P_mapfile)
+
+        all_dJdq_shm = posix_ipc.SharedMemory(self.all_dJdq_shm_id)
+        all_dJdq_mapfile = mmap.mmap(all_dJdq_shm.fd, self.n_frames*6*itemsize)
+        all_dJdq_shm.close_fd()
+        all_dJdq = np.ndarray((self.n_frames,6), dtype=self.np_dtype, buffer=all_dJdq_mapfile)
+
+        P_ = all_P[self.frame_id, :]
+        min_distance = np.linalg.norm(self.vertices - P_, axis=1).min()
+        if min_distance < 10:
+            dq_ = dq
+            R_ = all_R[self.frame_id, :, :]
+            J_ = all_J[self.frame_id, :, :]
+            dJdq_ = all_dJdq[self.frame_id, :]
+            quat_ = all_quat[self.frame_id, :]
+            v_ = J_ @ dq_ 
+            A_ = np.zeros((7,6), dtype=self.np_dtype)
+            Q_ = get_Q_matrix_from_quat(quat_) # shape (4,3)
+            A_[0:3,0:3] = np.eye(3, dtype=self.np_dtype)
+            A_[3:7,3:6] = Q_
+            dx_ = A_ @ v_
+            dquat_ = 0.5 * Q_ @ v_[3:6] # shape (4,)
+            dQ_ = get_dQ_matrix(dquat_) # shape (4,3)
+            dA_ = np.zeros((7,6), dtype=self.np_dtype)
+            dA_[3:7,3:6] = dQ_
+
+            # Solve the SCS problem
+            Q_d = R_ @ self.ellipsoid_quadratic_coef @ R_.T
+            c_d = - Q_d @ P_
+            P_scs = sparse.block_diag([Q_d, sparse.csc_matrix((self.n_exp_cones,self.n_exp_cones))], format="csc")
+            c_scs = np.hstack([c_d, np.zeros(self.n_exp_cones)])
+            data = dict(P=P_scs, A=self.A_scs, b=self.b_scs, c=c_scs)
+            cone = dict(l=1, ep=self.n_exp_cones)
+            solver = scs.SCS(data,
+                             cone,
+                             eps_abs=1e-5,
+                             eps_rel=1e-5,
+                             verbose=False
+                             )
+            if (self.scs_result_x is not None) and (self.scs_result_y is not None) and (self.scs_result_s is not None):
+                sol = solver.solve(warm_start=True,
+                                   x = self.scs_result_x,
+                                   y = self.scs_result_y,
+                                   s = self.scs_result_s
+                                   )
+            else:
+                sol = solver.solve()
+            # Save for the warm start
+            self.scs_result_x = sol["x"]
+            self.scs_result_y = sol["y"]
+            self.scs_result_s = sol["s"]
+
+            # CBF constraint
+            p_sol_np = sol["x"][:self.n_vars]
+            alpha_, alpha_dx_, alpha_dxdx_ = doh.getGradientAndHessian3d(p_sol_np, self.SF1, P_, quat_, 
+                                                                self.SF2, np.zeros(3), np.array([0,0,0,1]))
+            
+            alpha0_ = self.alpha0
+            gamma1_ = self.gamma1
+            gamma2_ = self.gamma2
+            compensation_ = self.compensation
+
+            h_ = alpha_ - alpha0_
+            h_dx_ = alpha_dx_
+            h_dxdx_ = alpha_dxdx_
+
+            dh_ = h_dx_ @ dx_
+            phi1_ = dh_ + gamma1_ * h_
+            
+            actuation_ = h_dx_ @ A_ @ J_
+            lb_ = - gamma2_*phi1_ - gamma1_*dh_ - dx_.T @ h_dxdx_ @ dx_ - h_dx_ @ dA_ @ v_ \
+                - h_dx_ @ A_ @ dJdq_ + compensation_
+            ub_ = np.inf
+            result_ = (h_, h_dx_, h_dxdx_, phi1_, actuation_, lb_, ub_)
+        else:
+            result_ = (0, np.zeros(7), np.zeros((7,7)), 0, np.zeros(9), 0, 0)
+        return result_
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -156,24 +256,13 @@ if __name__ == "__main__":
 
     # Load the bounding shape coefficients
     BB_coefs = BoundingShapeCoef()
-    robot_SFs = {}
-    for (i, bb_key) in enumerate(CBF_config["selected_bbs"]):
-        quadratic_coef = BB_coefs.coefs[bb_key]
-        SF = doh.Ellipsoid3d(True, quadratic_coef, np.zeros(3))
-        robot_SFs[bb_key] = SF
 
     # Obstacle
     obstacle_config = test_settings["obstacle_config"]
     n_obstacle = len(obstacle_config)
-    obstacle_SFs = {}
     obs_col = PolytopeCollection(3, n_obstacle, obstacle_config)
     id_geom_offset = 0
     for (i, obs_key) in enumerate(obs_col.face_equations.keys()):
-        A_obs_np = obs_col.face_equations[obs_key]["A"]
-        b_obs_np = obs_col.face_equations[obs_key]["b"]
-        SF =doh.LogSumExp3d(False, A_obs_np, b_obs_np, obstacle_kappa)
-        obstacle_SFs[obs_key] = SF
-
         # add visual ellipsoids
         all_points = obs_col.face_equations[obs_key]["vertices_in_world"]
         for j in range(len(all_points)):
@@ -220,12 +309,55 @@ if __name__ == "__main__":
     gamma2 = CBF_config["gamma2"]
     compensation = CBF_config["compensation"] 
     selected_BBs = CBF_config["selected_bbs"]
-    n_controls = 9
+    n_selected_BBs = len(selected_BBs)
+    n_controls = 7
 
     # Define proxuite problem
     print("==> Define proxuite problem")
-    n_CBF = len(robot_SFs)*len(obstacle_SFs)
+    n_CBF = n_selected_BBs*n_obstacle
     cbf_qp = init_proxsuite_qp(n_v=n_controls, n_eq=0, n_in=n_controls+n_CBF)
+
+    # Create shared memory
+    print("==> Create shared memory")
+    dq_shm_id = "/dq_shm"
+    all_J_shm_id = "/all_J_shm"
+    all_quat_shm_id = "/all_quat_shm"
+    all_R_shm_id = "/all_R_shm"
+    all_P_shm_id = "/all_P_shm"
+    all_dJdq_shm_id = "/all_dJdq_shm"
+
+    # Clean them up if they exist
+    clean_shared_memory(dq_shm_id)
+    clean_shared_memory(all_J_shm_id)
+    clean_shared_memory(all_quat_shm_id)
+    clean_shared_memory(all_R_shm_id)
+    clean_shared_memory(all_P_shm_id)
+    clean_shared_memory(all_dJdq_shm_id)
+
+    itemsize = np.dtype(config.np_dtype).itemsize
+    dq_shm_mapfile = create_mapfile(dq_shm_id, 7*itemsize)
+    all_J_shm_mapfile = create_mapfile(all_J_shm_id, n_selected_BBs*6*7*itemsize)
+    all_quat_shm_mapfile = create_mapfile(all_quat_shm_id, n_selected_BBs*4*itemsize)
+    all_R_shm_mapfile = create_mapfile(all_R_shm_id, n_selected_BBs*3*3*itemsize)
+    all_P_shm_mapfile = create_mapfile(all_P_shm_id, n_selected_BBs*3*itemsize)
+    all_dJdq_shm_mapfile = create_mapfile(all_dJdq_shm_id, n_selected_BBs*6*itemsize)
+
+    # Create workers
+    print("==> Create workers")
+    all_solvers = []
+    for (i, bb_key) in enumerate(selected_BBs):
+        for (j, obs_key) in enumerate(obs_col.face_equations.keys()):
+            frame_id = i
+            ellipsoid_quadratic_coef = BB_coefs.coefs[bb_key]
+            A_obs_np = obs_col.face_equations[obs_key]["A"]
+            b_obs_np = obs_col.face_equations[obs_key]["b"]
+            obs_kappa = obstacle_kappa
+            vertices = obs_col.face_equations[obs_key]["vertices_in_world"]
+            np_dtype = config.np_dtype
+            solver = SolverNode(ellipsoid_quadratic_coef, A_obs_np, b_obs_np, obs_kappa, vertices, np_dtype,
+                                frame_id, n_selected_BBs, dq_shm_id, all_J_shm_id, all_quat_shm_id, all_P_shm_id, all_dJdq_shm_id,
+                                alpha0, gamma1, gamma2, compensation)
+            all_solvers.append(solver)
 
     # Create records
     print("==> Create records")
@@ -243,8 +375,8 @@ if __name__ == "__main__":
     all_info = []
 
     # Start a pool of workers
-    n_workers = multiprocessing.cpu_count() - 1
-    with multiprocessing.Pool(processes=n_workers, initializer=init_worker) as pool:
+    NUM_WORKERS = multiprocessing.cpu_count() - 1
+    with ThreadPoolExecutor(max_workers=NUM_WORKERS) as executor:
         # Forward simulate the system
         P_EE_prev = info["P_EE"]
         time_prev = time.time()
@@ -256,21 +388,22 @@ if __name__ == "__main__":
                 time_control_loop_start = time.time()
 
                 # Update info
-                q = info["q"]
-                dq = info["dq"]
-                nle = info["nle"]
-                Minv = info["Minv"]
-                M = info["M"]
-                G = info["G"]
+                q = info["q"][:7]
+                dq = info["dq"][:7]
+                nle = info["nle"][:7]
+                Minv = info["Minv"][:7,:7]
+                M = info["M"][:7,:7]
+                G = info["G"][:7]
 
-                Minv_mj = info["Minv_mj"]
-                M_mj = info["M_mj"]
-                nle_mj = info["nle_mj"]
+                Minv_mj = info["Minv_mj"][:7,:7]
+                M_mj = info["M_mj"][:7,:7]
+                nle_mj = info["nle_mj"][:7]
 
                 P_EE = info["P_EE"]
                 R_EE = info["R_EE"]
-                J_EE = info["J_EE"]
-                dJdq_EE = info["dJdq_EE"]
+                J_EE = info["J_EE"][:,:7]
+                
+                dJdq_EE = info["dJdq_EE"][:7]
                 v_EE = J_EE @ dq
 
                 # Visualize the trajectory
@@ -303,12 +436,12 @@ if __name__ == "__main__":
                 q_dtdt_task = S_pinv @ (v_EE_dt_desired - dJdq_EE)
 
                 # Secondary objective: encourage the joints to remain close to the initial configuration
-                W = np.diag(1.0/(joint_ub-joint_lb))
-                q_bar = 1/2*(joint_ub+joint_lb)
+                W = np.diag(1.0/(joint_ub-joint_lb))[:7,:7]
+                q_bar = 1/2*(joint_ub+joint_lb)[:7]
                 e_joint = W @ (q - q_bar)
                 e_joint_dot = W @ dq
-                Kp_joint = 80*np.diag([1, 1, 1, 1, 1, 1, 1, 1, 1]).astype(config.np_dtype)
-                Kd_joint = 40*np.diag([1, 1, 1, 1, 1, 1, 1, 1, 1]).astype(config.np_dtype)
+                Kp_joint = 80*np.diag([1, 1, 1, 1, 1, 1, 1]).astype(config.np_dtype)
+                Kd_joint = 40*np.diag([1, 1, 1, 1, 1, 1, 1]).astype(config.np_dtype)
                 q_dtdt = q_dtdt_task + S_null @ (- Kp_joint @ e_joint - Kd_joint @ e_joint_dot)
 
                 # Map to torques
@@ -325,65 +458,51 @@ if __name__ == "__main__":
                     phi1_tmp = np.zeros(n_CBF, dtype=config.np_dtype)
                     phi2_tmp = np.zeros(n_CBF, dtype=config.np_dtype)
 
-                    all_h = np.zeros(n_CBF, dtype=config.np_dtype)
-                    first_order_all_average_scalar = np.zeros(n_CBF, dtype=config.np_dtype)
-                    second_order_all_average_scalar = np.zeros(n_CBF, dtype=config.np_dtype)
-                    second_order_all_average_vector = np.zeros((n_CBF, 9), dtype=config.np_dtype)
+                    all_P_np = np.zeros([n_selected_BBs, 3], dtype=config.np_dtype)
+                    all_J_np = np.zeros([n_selected_BBs, 6, 7], dtype=config.np_dtype)
+                    all_quat_np = np.zeros([n_selected_BBs, 4], dtype=config.np_dtype)
+                    all_R_np = np.zeros([n_selected_BBs, 3, 3], dtype=config.np_dtype)
+                    all_dJdq_np = np.zeros([n_selected_BBs, 6], dtype=config.np_dtype)
 
-                    n_obs = len(obstacle_SFs)
+                    for (ii, bb_key) in enumerate(selected_BBs):
+                        all_P_np[ii, :] = info["P_"+bb_key].astype(config.np_dtype)
+                        all_J_np[ii, :, :] = info["J_"+bb_key][:,:7].astype(config.np_dtype)
+                        all_quat_np[ii, :] = get_quat_from_rot_matrix(info["R_"+bb_key]).astype(config.np_dtype)
+                        all_R_np[ii, :, :] = info["R_"+bb_key].astype(config.np_dtype)
+                        all_dJdq_np[ii, :] = info["dJdq_"+bb_key][:7].astype(config.np_dtype)
+                    
+                    # Update shared memory
+                    # dq_memmap = np.memmap(dq_shm_mapfile, dtype=config.np_dtype, mode='r+', shape=(7,))
+                    # all_P_memmap = np.memmap(all_P_shm_mapfile, dtype=config.np_dtype, mode='r+', shape=(n_selected_BBs,3))
+                    # all_J_memmap = np.memmap(all_J_shm_mapfile, dtype=config.np_dtype, mode='r+', shape=(n_selected_BBs,6,7))
+                    # all_quat_memmap = np.memmap(all_quat_shm_mapfile, dtype=config.np_dtype, mode='r+', shape=(n_selected_BBs,4))
+                    # all_R_memmap = np.memmap(all_R_shm_mapfile, dtype=config.np_dtype, mode='r+', shape=(n_selected_BBs,3,3))
+                    # all_dJdq_memmap = np.memmap(all_dJdq_shm_mapfile, dtype=config.np_dtype, mode='r+', shape=(n_selected_BBs,6))
+                    dq_memmap = np.ndarray((7,), dtype=config.np_dtype, buffer=dq_shm_mapfile)
+                    all_P_memmap = np.ndarray((n_selected_BBs,3), dtype=config.np_dtype, buffer=all_P_shm_mapfile)
+                    all_J_memmap = np.ndarray((n_selected_BBs,6,7), dtype=config.np_dtype, buffer=all_J_shm_mapfile)
+                    all_quat_memmap = np.ndarray((n_selected_BBs,4), dtype=config.np_dtype, buffer=all_quat_shm_mapfile)
+                    all_R_memmap = np.ndarray((n_selected_BBs,3,3), dtype=config.np_dtype, buffer=all_R_shm_mapfile)
+                    all_dJdq_memmap = np.ndarray((n_selected_BBs,6), dtype=config.np_dtype, buffer=all_dJdq_shm_mapfile)
 
-                    for kk in range(len(selected_BBs)):
-                        bb_key = selected_BBs[kk]
-                        P_BB = info["P_"+bb_key]
-                        R_BB = info["R_"+bb_key]
-                        J_BB = info["J_"+bb_key]
-                        dJdq_BB = info["dJdq_"+bb_key]
-                        v_BB = J_BB @ dq
-                        D_BB = BB_coefs.coefs[bb_key]
-                        quat_BB = get_quat_from_rot_matrix(R_BB)
-
-                        A_BB = np.zeros((7,6), dtype=config.np_dtype)
-                        Q_BB = get_Q_matrix_from_quat(quat_BB) # shape (4,3)
-                        A_BB[0:3,0:3] = np.eye(3, dtype=config.np_dtype)
-                        A_BB[3:7,3:6] = Q_BB
-                        dx_BB = A_BB @ v_BB
-
-                        dquat_BB = 0.5 * Q_BB @ v_BB[3:6] # shape (4,)
-                        dQ_BB = get_dQ_matrix(dquat_BB) # shape (4,3)
-                        dA_BB = np.zeros((7,6), dtype=config.np_dtype)
-                        dA_BB[3:7,3:6] = dQ_BB
-
-                        D_BB_sqrt = BB_coefs.coefs_sqrt[bb_key]
-                        ellipse_Q_sqrt_np = D_BB_sqrt @ R_BB.T
-                        ellipse_Q_np = ellipse_Q_sqrt_np.T @ ellipse_Q_sqrt_np
-                        ellipse_b_np = -2 * ellipse_Q_np @ P_BB
-
-                        SF1 = robot_SFs[bb_key]
-
-                        for (ll, obs_key) in enumerate(obstacle_SFs.keys()):
-                            # Pass parameter values to cvxpy problem
-                            all_vertices_in_world = obs_col.face_equations[obs_key]["vertices_in_world"]
-                            min_distance = np.linalg.norm(all_vertices_in_world - P_BB, axis=1).min()
-
-                            A_obs_np = obs_col.face_equations[obs_key]["A"]
-                            b_obs_np = obs_col.face_equations[obs_key]["b"]
-
-                            SF2 = obstacle_SFs[obs_key]
-                            all_vertices_in_world = obs_col.face_equations[obs_key]["vertices_in_world"]
-                            min_distance = np.linalg.norm(all_vertices_in_world - P_BB, axis=1).min()
-
-                            input_data = (min_distance, ellipse_Q_np, ellipse_b_np, A_obs_np, b_obs_np,\
-                                    obstacle_kappa, SF1, SF2, P_BB, quat_BB, dx_BB, v_BB, A_BB, J_BB, dA_BB, dJdq_BB,\
-                                    alpha0, gamma1, gamma2, compensation)
-                            all_input_data.append(input_data)
-
-                    # Solve the optimization problem and compute the jacobian and hessian
+                    np.copyto(dq_memmap, dq)
+                    np.copyto(all_P_memmap, all_P_np)
+                    np.copyto(all_J_memmap, all_J_np)
+                    np.copyto(all_quat_memmap, all_quat_np)
+                    np.copyto(all_R_memmap, all_R_np)
+                    np.copyto(all_dJdq_memmap, all_dJdq_np)
+                    
                     time_cvxpy_and_diff_helper_tmp -= time.time()
-                    all_results = pool.map(worker_func, all_input_data)
+                    futures = []
+                    for (ii, bb_key) in enumerate(selected_BBs):
+                        for (jj, obs_key) in enumerate(obs_col.face_equations.keys()):
+                            solver = all_solvers[ii*n_obstacle+jj]
+                            futures.append(executor.submit(solver.solve))
+                    done, _ = concurrent.futures.wait(futures)
                     time_cvxpy_and_diff_helper_tmp += time.time()
 
                     for kk in range(n_CBF):
-                        result = all_results[kk]
+                        result = futures[kk].result()
                         _h, _, _, _phi1, _actuation, _lb, _ub = result
                         C[kk,:] = _actuation
                         lb[kk] = _lb
@@ -395,8 +514,8 @@ if __name__ == "__main__":
                     print(np.min(CBF_tmp))
                     g = -u_nominal
                     C[n_CBF:n_CBF+n_controls,:] = M_mj
-                    lb[n_CBF:] = input_torque_lb - nle_mj
-                    ub[n_CBF:] = input_torque_ub - nle_mj
+                    lb[n_CBF:] = input_torque_lb[:7] - nle_mj
+                    ub[n_CBF:] = input_torque_ub[:7] - nle_mj
                     cbf_qp.update(g=g, C=C, l=lb, u=ub)
                     time_cbf_qp_start = time.time()
                     cbf_qp.solve()
@@ -404,20 +523,18 @@ if __name__ == "__main__":
                     u = cbf_qp.results.x
                     for kk in range(n_CBF):
                         phi2_tmp[kk] = C[kk,:] @ u - lb[kk]
-                    time_control_loop_end = time.time()
 
                 else:
                     u = u_nominal
                     time_cbf_qp_start = 0
                     time_cbf_qp_end = 0
-                    time_control_loop_end = time.time()
                     CBF_tmp = np.zeros(n_CBF, dtype=config.np_dtype)
                     phi1_tmp = np.zeros(n_CBF, dtype=config.np_dtype)
                     phi2_tmp = np.zeros(n_CBF, dtype=config.np_dtype)
 
                 # Step the environment
+                time_control_loop_end = time.time()
                 u = M_mj @ u + nle_mj
-                u = u[:7]
                 finger_pos = 0.01
                 info = env.step(tau=u, finger_pos=finger_pos)
                 time.sleep(max(0,dt-time_control_loop_end+time_control_loop_start))
@@ -438,12 +555,24 @@ if __name__ == "__main__":
             env.close()
         except KeyboardInterrupt:
             print("Caught KeyboardInterrupt, terminating workers")
-            pool.terminate()
+            executor.shutdown(wait=False)
+            posix_ipc.unlink_shared_memory(dq_shm_id)
+            posix_ipc.unlink_shared_memory(all_J_shm_id)
+            posix_ipc.unlink_shared_memory(all_quat_shm_id)
+            posix_ipc.unlink_shared_memory(all_R_shm_id)
+            posix_ipc.unlink_shared_memory(all_P_shm_id)
+            posix_ipc.unlink_shared_memory(all_dJdq_shm_id)
         else:
-            pool.close()
+            print("All tasks completed successfully")
         finally:
-            pool.join()
+            executor.shutdown(wait=False)
             print("==> All workers have been terminated")
+            posix_ipc.unlink_shared_memory(dq_shm_id)
+            posix_ipc.unlink_shared_memory(all_J_shm_id)
+            posix_ipc.unlink_shared_memory(all_quat_shm_id)
+            posix_ipc.unlink_shared_memory(all_R_shm_id)
+            posix_ipc.unlink_shared_memory(all_P_shm_id)
+            posix_ipc.unlink_shared_memory(all_dJdq_shm_id)
 
     # Save summary
     print("==> Save results")
@@ -465,7 +594,7 @@ if __name__ == "__main__":
     print("==> Control loop solving time: {:.5f} s".format(np.mean(time_control_loop)))
     print("==> CVXPY and diff opt solving time: {:.5f} s".format(np.mean(time_cvxpy_and_diff_helper)))
     print("==> CBF-QP solving time: {:.5f} s".format(np.mean(time_cbf_qp)))
-    
+
     # Visualization
     print("==> Draw plots")
     plt.rcParams['font.family'] = 'serif'
@@ -481,8 +610,6 @@ if __name__ == "__main__":
     plt.plot(times, joint_angles[:,4], linestyle="-", label=r"$q_5$")
     plt.plot(times, joint_angles[:,5], linestyle="-", label=r"$q_6$")
     plt.plot(times, joint_angles[:,6], linestyle="-", label=r"$q_7$")
-    plt.plot(times, joint_angles[:,7], linestyle="-", label=r"$q_8$")
-    plt.plot(times, joint_angles[:,8], linestyle="-", label=r"$q_9$")
     plt.legend()
     plt.tight_layout()
     plt.savefig(os.path.join(results_dir, 'plot_joint_angles.pdf'))

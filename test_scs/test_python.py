@@ -58,7 +58,7 @@ solver = scs.SCS(
     cone,
     eps_abs=1e-5,
     eps_rel=1e-5,
-    verbose=False
+    verbose=True
 )
 sol = solver.solve()
 time_end = time.time()
@@ -70,13 +70,13 @@ print(sol["y"].shape)
 print(sol["s"].shape)
 
 # Compare with cvxpy
-# import cvxpy as cp
-# time_start = time.time()
-# x = cp.Variable(n_p)
-# objective = cp.Minimize(0.5 * cp.quad_form(x, Q_d) - mu_d.T @ Q_d @ x)
-# constraint = [cp.log_sum_exp(A_d @ x + b_d) <= c_d]
-# prob = cp.Problem(objective, constraint)
-# prob.solve(solver=cp.SCS, verbose=False)
-# time_end = time.time()
-# print("Time elapsed: ", time_end - time_start)
-# print(x.value)
+import cvxpy as cp
+time_start = time.time()
+x = cp.Variable(n_p)
+objective = cp.Minimize(0.5 * cp.quad_form(x, Q_d) - mu_d.T @ Q_d @ x)
+constraint = [cp.log_sum_exp(A_d @ x + b_d) <= c_d]
+prob = cp.Problem(objective, constraint)
+prob.solve(solver=cp.SCS, verbose=True)
+time_end = time.time()
+print("Time elapsed: ", time_end - time_start)
+print(x.value)
