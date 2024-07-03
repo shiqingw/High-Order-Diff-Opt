@@ -49,6 +49,13 @@ c = np.hstack([-Q_d @ mu_d, np.zeros(n)])
 
 # SCS data
 data = dict(P=P, A=A, b=b, c=c)
+# print(A.data)
+# print(A.indices)
+# print(A.indptr)
+# print(P.todense())
+# print(P.data)
+# print(P.indices)
+# print(P.indptr)
 # ep is exponential cone (primal), with n triples
 cone = dict(l=1, ep=n)
 
@@ -58,7 +65,7 @@ solver = scs.SCS(
     cone,
     eps_abs=1e-5,
     eps_rel=1e-5,
-    verbose=True
+    verbose=False
 )
 sol = solver.solve()
 time_end = time.time()
@@ -69,14 +76,17 @@ print(sol["x"].shape)
 print(sol["y"].shape)
 print(sol["s"].shape)
 
-# Compare with cvxpy
-import cvxpy as cp
-time_start = time.time()
-x = cp.Variable(n_p)
-objective = cp.Minimize(0.5 * cp.quad_form(x, Q_d) - mu_d.T @ Q_d @ x)
-constraint = [cp.log_sum_exp(A_d @ x + b_d) <= c_d]
-prob = cp.Problem(objective, constraint)
-prob.solve(solver=cp.SCS, verbose=True)
-time_end = time.time()
-print("Time elapsed: ", time_end - time_start)
-print(x.value)
+# import timeit
+# print(timeit.timeit(lambda: solver.solve(), number=1000))
+
+# # Compare with cvxpy
+# import cvxpy as cp
+# time_start = time.time()
+# x = cp.Variable(n_p)
+# objective = cp.Minimize(0.5 * cp.quad_form(x, Q_d) - mu_d.T @ Q_d @ x)
+# constraint = [cp.log_sum_exp(A_d @ x + b_d) <= c_d]
+# prob = cp.Problem(objective, constraint)
+# prob.solve(solver=cp.SCS, verbose=True)
+# time_end = time.time()
+# print("Time elapsed: ", time_end - time_start)
+# print(x.value)
