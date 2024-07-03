@@ -22,6 +22,7 @@ from cores.configuration.configuration import Configuration
 from liegroups import SO3
 from cores.utils.trajectory_utils import PositionTrapezoidalTrajectory, OrientationTrapezoidalTrajectory
 from cores.obstacle_collections.polytope_collection import PolytopeCollection
+import multiprocessing
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -144,7 +145,7 @@ if __name__ == "__main__":
 
     # Create workers
     print("==> Create workers")
-    n_threads = 9
+    n_threads = max(multiprocessing.cpu_count() -1, 1)
     probs = hh.Problem3dCollection(n_threads)
     for (i, bb_key) in enumerate(selected_BBs):
         for (j, obs_key) in enumerate(obs_col.face_equations.keys()):

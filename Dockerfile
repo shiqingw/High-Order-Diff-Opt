@@ -55,7 +55,7 @@ RUN conda install python==3.11 \
 
 # Install the required Python packages
 RUN pip install numpy==1.24.4 \
-    scipy==1.10.1 \
+    scipy==1.11.4 \
     matplotlib==3.7.2 \
     proxsuite \
     pin==2.6.18 \
@@ -70,8 +70,6 @@ RUN conda install -c conda-forge \
     pybind11 \
     xtensor \
     xtensor-blas \
-    xsimd \
-    xtl \
     && conda clean -afy
 
 # Install xtensor-python from source
@@ -83,6 +81,20 @@ RUN git clone https://github.com/shiqingw/xtensor-python.git \
     && make install \
     && cd ../.. \
     && rm -rf xtensor-python
+
+RUN conda install -c conda-forge \
+    xsimd \
+    xtl \
+    && conda clean -afy
+
+RUN git clone https://github.com/cvxgrp/scs.git \
+    && cd scs \
+    && mkdir build \
+    && cd build \
+    && cmake -DCMAKE_INSTALL_PREFIX='/usr/local' .. \
+    && make \
+    && make install \
+    && cd ..
 
 # Install Scaling-Functions-Helper
 RUN git clone https://github.com/shiqingw/Scaling-Functions-Helper.git\
