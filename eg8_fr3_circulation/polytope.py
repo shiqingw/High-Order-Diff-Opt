@@ -301,13 +301,13 @@ if __name__ == "__main__":
                 A_BB = np.zeros((7,6), dtype=config.np_dtype)
                 Q_BB = get_Q_matrix_from_quat(quat_BB) # shape (4,3)
                 A_BB[0:3,0:3] = np.eye(3, dtype=config.np_dtype)
-                A_BB[3:7,3:6] = Q_BB
+                A_BB[3:7,3:6] = 0.5*Q_BB
                 dx_BB = A_BB @ v_BB
 
                 dquat_BB = 0.5 * Q_BB @ v_BB[3:6] # shape (4,)
                 dQ_BB = get_dQ_matrix(dquat_BB) # shape (4,3)
                 dA_BB = np.zeros((7,6), dtype=config.np_dtype)
-                dA_BB[3:7,3:6] = dQ_BB
+                dA_BB[3:7,3:6] = 0.5*dQ_BB
 
                 SF1 = robot_SFs[bb_key]
 

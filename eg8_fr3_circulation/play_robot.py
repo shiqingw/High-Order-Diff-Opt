@@ -14,9 +14,6 @@ import time
 from fr3_envs.fr3_mj_env_collision import FR3MuJocoEnv
 from fr3_envs.bounding_shape_coef_mj import BoundingShapeCoef
 from cores.utils.utils import seed_everything, save_dict
-from cores.utils.proxsuite_utils import init_proxsuite_qp
-import scalingFunctionsHelper as doh
-from cores.utils.rotation_utils import get_quat_from_rot_matrix, get_Q_matrix_from_quat, get_dQ_matrix
 from cores.configuration.configuration import Configuration
 from scipy.spatial.transform import Rotation
 from liegroups import SO3
@@ -102,7 +99,7 @@ if __name__ == "__main__":
             time_prev = time.time()
 
         # Primary obejctive: tracking control
-        P_d = np.array([0.2, 0.2, 0.86])
+        P_d = np.array([0.25, 0.2, 0.86])
         # P_d = np.array([0.1, 0.0, 1.8])
         # P_d = np.array([0.5, 0.0, 0.85])
         # P_d = np.array([0.25, 0.4, 0.85])

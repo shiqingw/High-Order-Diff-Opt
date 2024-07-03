@@ -70,7 +70,8 @@ RUN conda install -c conda-forge \
     pybind11 \
     xtensor \
     xtensor-blas \
-    # xtensor-python \ 
+    xsimd \
+    xtl \
     && conda clean -afy
 
 # Install xtensor-python from source
@@ -86,13 +87,25 @@ RUN git clone https://github.com/shiqingw/xtensor-python.git \
 # Install Scaling-Functions-Helper
 RUN git clone https://github.com/shiqingw/Scaling-Functions-Helper.git\
     && cd Scaling-Functions-Helper \
-    && pip install -e .
+    && mkdir build \
+    && cd build \
+    && cmake -DCMAKE_INSTALL_PREFIX='/usr/local' .. \
+    && make install \
+    && cd .. \ 
+    && pip install -e . \
+    && cd ..
+
+# Install 
+RUN git clone https://github.com/shiqingw/HOCBF-Helper.git\
+    && cd HOCBF-Helper \
+    && pip install -e . \
+    && cd ..
 
 # Install liegroups
 RUN git clone https://github.com/utiasSTARS/liegroups.git \
-&& cd liegroups \
-&& pip install -e . \
-&& cd ..
+    && cd liegroups \
+    && pip install -e . \
+    && cd ..
 
 # Install FR3Py
 RUN git clone https://github.com/Rooholla-KhorramBakht/FR3Py.git \

@@ -9,7 +9,7 @@ def get_quat_from_rot_matrix(rot_matrix):
     The returned value is in scalar-first (x, y, z, w) format
     """
     r = R.from_matrix(rot_matrix)
-    quat = r.as_quat()
+    quat = r.as_quat(canonical=True)
     return quat
 
 def get_rot_matrix_from_quat(quat):

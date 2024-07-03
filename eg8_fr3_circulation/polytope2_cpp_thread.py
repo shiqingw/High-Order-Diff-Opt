@@ -96,9 +96,9 @@ if __name__ == "__main__":
 
     # Compute desired trajectory
     t_final = 10
-    P_EE_0 = np.array([0.2, 0.2, 0.86])
-    P_EE_1 = np.array([0.2, -0.3, 0.86])
-    P_EE_2 = np.array([0.2, -0.3, 0.86])
+    P_EE_0 = np.array([0.25, 0.2, 0.86])
+    P_EE_1 = np.array([0.25, -0.3, 0.86])
+    P_EE_2 = np.array([0.25, -0.3, 0.86])
     via_points = np.array([P_EE_0, P_EE_1, P_EE_2])
     target_time = np.array([0, 5, t_final])
     Ts = 0.01
@@ -352,18 +352,16 @@ if __name__ == "__main__":
                          "text.latex.preamble": r"\usepackage{amsmath}"})
     plt.rcParams.update({'pdf.fonttype': 42})
 
-    fig, ax = plt.subplots(figsize=(10,8), dpi=config.dpi, frameon=True)
-    plt.plot(times, joint_angles[:,0], linestyle="-", label=r"$q_1$")
-    plt.plot(times, joint_angles[:,1], linestyle="-", label=r"$q_2$")
-    plt.plot(times, joint_angles[:,2], linestyle="-", label=r"$q_3$")
-    plt.plot(times, joint_angles[:,3], linestyle="-", label=r"$q_4$")
-    plt.plot(times, joint_angles[:,4], linestyle="-", label=r"$q_5$")
-    plt.plot(times, joint_angles[:,5], linestyle="-", label=r"$q_6$")
-    plt.plot(times, joint_angles[:,6], linestyle="-", label=r"$q_7$")
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig(os.path.join(results_dir, 'plot_joint_angles.pdf'))
-    plt.close(fig)
+    for i in range(7):
+        fig, ax = plt.subplots(figsize=(10,8), dpi=config.dpi, frameon=True)
+        plt.plot(times, joint_angles[:,i], color="tab:blue", linestyle="-", label="u_{:d}".format(i+1))
+        plt.axhline(y = joint_lb[i], color = 'black', linestyle = 'dotted', linewidth = 2)
+        plt.axhline(y = joint_ub[i], color = 'black', linestyle = 'dotted', linewidth = 2)
+        plt.legend()
+        plt.tight_layout()
+        plt.savefig(os.path.join(results_dir, 'plot_q_{:d}.pdf'.format(i+1)))
+        plt.close(fig)
+
 
     for i in range(7):
         fig, ax = plt.subplots(figsize=(10,8), dpi=config.dpi, frameon=True)

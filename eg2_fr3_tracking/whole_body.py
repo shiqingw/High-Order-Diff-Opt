@@ -264,6 +264,7 @@ if __name__ == "__main__":
                 CBF_tmp[kk] = CBF
                 phi1_tmp[kk] = phi1
 
+            print(min(CBF_tmp))
             # CBF-QP constraints
             g = -u_nominal
             C[n_CBF:n_CBF+n_controls,:] = np.eye(n_controls, dtype=config.np_dtype)

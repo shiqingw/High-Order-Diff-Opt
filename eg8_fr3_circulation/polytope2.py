@@ -15,7 +15,7 @@ from fr3_envs.fr3_mj_env_collision import FR3MuJocoEnv
 from fr3_envs.bounding_shape_coef_mj import BoundingShapeCoef
 from cores.utils.utils import seed_everything, save_dict
 from cores.utils.proxsuite_utils import init_proxsuite_qp
-import scalingFunctionsHelper as doh
+import scalingFunctionsHelperPy as sfh
 from cores.utils.rotation_utils import get_quat_from_rot_matrix, get_Q_matrix_from_quat, get_dQ_matrix
 from cores.configuration.configuration import Configuration
 from scipy.spatial.transform import Rotation
@@ -88,7 +88,7 @@ if __name__ == "__main__":
     robot_SFs = {}
     for (i, bb_key) in enumerate(CBF_config["selected_bbs"]):
         quadratic_coef = BB_coefs.coefs[bb_key]
-        SF = doh.Ellipsoid3d(True, quadratic_coef, np.zeros(3))
+        SF = sfh.Ellipsoid3d(True, quadratic_coef, np.zeros(3))
         robot_SFs[bb_key] = SF
 
     # Obstacle
@@ -100,7 +100,7 @@ if __name__ == "__main__":
     for (i, obs_key) in enumerate(obs_col.face_equations.keys()):
         A_obs_np = obs_col.face_equations[obs_key]["A"]
         b_obs_np = obs_col.face_equations[obs_key]["b"]
-        SF =doh.LogSumExp3d(False, A_obs_np, b_obs_np, obstacle_kappa)
+        SF =sfh.LogSumExp3d(False, A_obs_np, b_obs_np, obstacle_kappa)
         obstacle_SFs[obs_key] = SF
 
         # add visual ellipsoids
@@ -148,9 +148,9 @@ if __name__ == "__main__":
 
     # Compute desired trajectory
     t_final = 15
-    P_EE_0 = np.array([0.2, 0.2, 0.86])
-    P_EE_1 = np.array([0.2, -0.3, 0.86])
-    P_EE_2 = np.array([0.2, -0.3, 0.86])
+    P_EE_0 = np.array([0.25, 0.2, 0.86])
+    P_EE_1 = np.array([0.25, -0.3, 0.86])
+    P_EE_2 = np.array([0.25, -0.3, 0.86])
     via_points = np.array([P_EE_0, P_EE_1, P_EE_2])
     target_time = np.array([0, 5, t_final])
     Ts = 0.01
@@ -308,13 +308,13 @@ if __name__ == "__main__":
                 A_BB = np.zeros((7,6), dtype=config.np_dtype)
                 Q_BB = get_Q_matrix_from_quat(quat_BB) # shape (4,3)
                 A_BB[0:3,0:3] = np.eye(3, dtype=config.np_dtype)
-                A_BB[3:7,3:6] = Q_BB
+                A_BB[3:7,3:6] = 0.5*Q_BB
                 dx_BB = A_BB @ v_BB
 
                 dquat_BB = 0.5 * Q_BB @ v_BB[3:6] # shape (4,)
                 dQ_BB = get_dQ_matrix(dquat_BB) # shape (4,3)
                 dA_BB = np.zeros((7,6), dtype=config.np_dtype)
-                dA_BB[3:7,3:6] = dQ_BB
+                dA_BB[3:7,3:6] = 0.5*dQ_BB
 
                 SF1 = robot_SFs[bb_key]
 
@@ -342,7 +342,7 @@ if __name__ == "__main__":
 
                         p_sol_np = np.squeeze(_p.value)
                         time_diff_helper_tmp -= time.time()
-                        alpha, alpha_dx, alpha_dxdx = doh.getGradientAndHessian3d(p_sol_np, SF1, P_BB, quat_BB, 
+                        alpha, alpha_dx, alpha_dxdx = sfh.getGradientAndHessian3d(p_sol_np, SF1, P_BB, quat_BB, 
                                                                                 SF2, np.zeros(3), np.array([0,0,0,1]))
                         time_diff_helper_tmp += time.time()
 
