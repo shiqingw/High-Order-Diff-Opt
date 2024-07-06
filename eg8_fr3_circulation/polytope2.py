@@ -62,6 +62,11 @@ if __name__ == "__main__":
     joint_acc_lb = np.array(joint_acc_limits_config["lb"], dtype=config.np_dtype)
     joint_acc_ub = np.array(joint_acc_limits_config["ub"], dtype=config.np_dtype)
 
+    # Joint input_torque limits
+    input_torque_limits_config = test_settings["input_torque_limits_config"]
+    input_torque_lb = np.array(input_torque_limits_config["lb"], dtype=config.np_dtype)
+    input_torque_ub = np.array(input_torque_limits_config["ub"], dtype=config.np_dtype)
+
     # Create and reset simulation
     cam_distance = simulator_config["cam_distance"]
     cam_azimuth = simulator_config["cam_azimuth"]
@@ -288,11 +293,6 @@ if __name__ == "__main__":
             phi1_tmp = np.zeros(n_CBF, dtype=config.np_dtype)
             phi2_tmp = np.zeros(n_CBF, dtype=config.np_dtype)
 
-            all_h = np.zeros(n_CBF, dtype=config.np_dtype)
-            first_order_all_average_scalar = np.zeros(n_CBF, dtype=config.np_dtype)
-            second_order_all_average_scalar = np.zeros(n_CBF, dtype=config.np_dtype)
-            second_order_all_average_vector = np.zeros((n_CBF, 9), dtype=config.np_dtype)
-
             n_obs = len(obstacle_SFs)
 
             for kk in range(len(selected_BBs)):
@@ -356,6 +356,7 @@ if __name__ == "__main__":
                         C[kk*n_obs+ll,:] = h_dx @ A_BB @ J_BB
                         lb[kk*n_obs+ll] = - gamma2*phi1 - gamma1*dh - dx_BB.T @ h_dxdx @ dx_BB - h_dx @ dA_BB @ v_BB \
                             - h_dx @ A_BB @ dJdq_BB  + compensation
+
                         ub[kk*n_obs+ll] = np.inf
 
                         CBF_tmp[kk*n_obs+ll] = h
@@ -367,9 +368,9 @@ if __name__ == "__main__":
             # CBF-QP constraints
             print(np.min(CBF_tmp))
             g = -u_nominal
-            C[n_CBF:n_CBF+n_controls,:] = np.eye(n_controls, dtype=config.np_dtype)
-            lb[n_CBF:] = joint_acc_lb
-            ub[n_CBF:] = joint_acc_ub
+            C[n_CBF:n_CBF+n_controls,:] = M_mj
+            lb[n_CBF:] = input_torque_lb[:7] - nle_mj
+            ub[n_CBF:] = input_torque_ub[:7] - nle_mj
             cbf_qp.update(g=g, C=C, l=lb, u=ub)
             time_cbf_qp_start = time.time()
             cbf_qp.solve()

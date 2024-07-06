@@ -132,6 +132,9 @@ class FR3MuJocoEnv:
         self.pin_robot.computeJointJacobians(q)
         self.pin_robot.framesForwardKinematics(q)
         self.pin_robot.centroidalMomentum(q, dq)
+        self.pin_robot.forwardKinematics(q, dq, 0*q) # 0*q is the acceleration set to zero
+        pin.computeJointJacobiansTimeVariation(self.pin_robot.model, self.pin_robot.data, q, dq)
+        pin.updateFramePlacements(self.pin_robot.model, self.pin_robot.data)
 
     def get_info(self, q, dq):
         """
@@ -161,9 +164,13 @@ class FR3MuJocoEnv:
             )
 
             # Advanced calculation
-            info[f"dJdq_{frame_name}"] = pin.getFrameClassicalAcceleration(
-                self.pin_robot.model, self.pin_robot.data, frame_id, self.jacobian_frame
-            ).vector
+            # dJ = pin.getFrameJacobianTimeVariation(
+            #     self.pin_robot.model, self.pin_robot.data, frame_id, self.jacobian_frame)
+            # info[f"dJdq_{frame_name}"] = dJ @ dq 
+
+            # same as above
+            info[f"dJdq_{frame_name}"] = pin.getFrameAcceleration(
+                self.pin_robot.model, self.pin_robot.data, frame_id, self.jacobian_frame).vector
 
         M, Minv, nle = self.get_dynamics(q, dq)
         info["M"] = M

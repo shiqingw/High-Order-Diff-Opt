@@ -31,26 +31,28 @@ def get_rot_matrix_from_euler_zyx(euler):
 def get_Q_matrix_from_quat(quat):
     """
     Return the Q matrix for quaternion differentiation. 
-    The quaternion value is in scalar-first (x, y, z, w) format.
+    The quaternion value is in scalar-last (x, y, z, w) format.
     See: https://math.stackexchange.com/questions/189185/quaternion-differentiation
     """
     qx, qy, qz, qw = quat
     Q = np.array([[qw, qz, -qy],
-                    [-qz, qw, qx],
-                    [qy, -qx, qw],
-                    [-qx, -qy, -qz]], dtype=config.np_dtype)
+                [-qz, qw, qx],
+                [qy, -qx, qw],
+                [-qx, -qy, -qz]], dtype=config.np_dtype)
+    
     return Q
 
 def get_dQ_matrix(dquat):
     """
     Return the dQ matrix for second-order quaternion differentiation. 
-    The quaternion value is in scalar-first (x, y, z, w) format
+    The quaternion value is in scalar-last (x, y, z, w) format
     """
     dx, dy, dz, dw = dquat
     dQ = np.array([[dw, dz, -dy],
                     [-dz, dw, dx],
                     [dy, -dx, dw],
                     [-dx, -dy, -dz]], dtype=config.np_dtype)
+    
     return dQ
 
 def sp_get_rot_matrix_from_quat(quat):

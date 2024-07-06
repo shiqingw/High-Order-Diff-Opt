@@ -96,7 +96,7 @@ if __name__ == "__main__":
             id_geom_offset = env.viewer.user_scn.ngeom
 
     # Compute desired trajectory
-    t_final = 10
+    t_final = 15
     P_EE_0 = np.array([0.25, 0.2, 0.86])
     P_EE_1 = np.array([0.25, -0.3, 0.86])
     P_EE_2 = np.array([0.25, -0.3, 0.86])
@@ -115,7 +115,6 @@ if __name__ == "__main__":
     orientations = np.array([R_EE_0, R_EE_1, R_EE_2], dtype=config.np_dtype)
     target_time = np.array([0, 5, t_final])
     traj_orientation = OrientationTrapezoidalTrajectory(orientations, target_time, Ts=Ts)
-
     # Visualize the trajectory
     N = 100
     len_traj = len(traj_line.t)
