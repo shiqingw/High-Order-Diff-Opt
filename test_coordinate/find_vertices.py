@@ -1,6 +1,6 @@
 import numpy as np
 
-def find_orthogonal_points(point1, point2, d, h):
+def find_orthogonal_points(point1, point2, d, h, offset=0):
     x1, y1, z = point1
     x2, y2, _  = point2
     
@@ -20,10 +20,10 @@ def find_orthogonal_points(point1, point2, d, h):
     orthogonal_dy = dx
     
     # Calculate the four points
-    p1 = (x1 + d * orthogonal_dx, y1 + d * orthogonal_dy, z)
-    p2 = (x1 - d * orthogonal_dx, y1 - d * orthogonal_dy, z)
-    p3 = (x2 + d * orthogonal_dx, y2 + d * orthogonal_dy, z)
-    p4 = (x2 - d * orthogonal_dx, y2 - d * orthogonal_dy, z)
+    p1 = (x1 + (d+offset) * orthogonal_dx, y1 + (d+offset) * orthogonal_dy, z)
+    p2 = (x1 - (d-offset) * orthogonal_dx, y1 - (d-offset) * orthogonal_dy, z)
+    p3 = (x2 + (d+offset) * orthogonal_dx, y2 + (d+offset) * orthogonal_dy, z)
+    p4 = (x2 - (d-offset) * orthogonal_dx, y2 - (d-offset) * orthogonal_dy, z)
 
     p1_ = (x1 + d * orthogonal_dx, y1 + d * orthogonal_dy, z-h)
     p2_ = (x1 - d * orthogonal_dx, y1 - d * orthogonal_dy, z-h)
@@ -50,10 +50,10 @@ def find_orthogonal_points(point1, point2, d, h):
 
 P_A = np.array([0.23, 0.29, 0.28])
 P_B = np.array([0.42, 0.54, 0.28])
-P_C = np.array([0.05, 0.83, 0.28])
-P_D = np.array([-0.14, 0.58, 0.28])
+# P_C = np.array([0.05, 0.83, 0.28])
+# P_D = np.array([-0.14, 0.58, 0.28])
 
-find_orthogonal_points(P_A, P_B, 0.005, 0.28)
-find_orthogonal_points(P_B, P_C, 0.005, 0.28)
-find_orthogonal_points(P_C, P_D, 0.005, 0.28)
-find_orthogonal_points(P_D, P_A, 0.005, 0.28)
+find_orthogonal_points(P_A, P_B, 0.005, 0.28, offset=0.02)
+# find_orthogonal_points(P_B, P_C, 0.005, 0.28)
+# find_orthogonal_points(P_C, P_D, 0.005, 0.28)
+# find_orthogonal_points(P_D, P_A, 0.005, 0.28)

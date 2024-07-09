@@ -93,7 +93,7 @@ if __name__ == "__main__":
         # add visual ellipsoids
         all_points = obs_col.face_equations[obs_key]["vertices_in_world"]
         for j in range(len(all_points)):
-            env.add_visual_ellipsoid(0.05*np.ones(3), all_points[j], np.eye(3), np.array([1,0,0,1]),id_geom_offset=id_geom_offset)
+            env.add_visual_ellipsoid(0.01*np.ones(3), all_points[j], np.eye(3), np.array([1,0,0,1]),id_geom_offset=id_geom_offset)
             id_geom_offset = env.viewer.user_scn.ngeom
 
     # Compute desired trajectory
