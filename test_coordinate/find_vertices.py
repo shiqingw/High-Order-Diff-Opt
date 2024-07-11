@@ -53,7 +53,7 @@ P_B = np.array([0.42, 0.54, 0.28])
 # P_C = np.array([0.05, 0.83, 0.28])
 # P_D = np.array([-0.14, 0.58, 0.28])
 
-find_orthogonal_points(P_A, P_B, 0.005, 0.28, offset=0.02)
+find_orthogonal_points(P_A, P_B, 0.005, 0.28, offset=0.0)
 # find_orthogonal_points(P_B, P_C, 0.005, 0.28)
 # find_orthogonal_points(P_C, P_D, 0.005, 0.28)
 # find_orthogonal_points(P_D, P_A, 0.005, 0.28)

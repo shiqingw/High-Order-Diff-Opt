@@ -141,6 +141,9 @@ if __name__ == "__main__":
     # CBF parameters
     CBF_config = test_settings["CBF_config"]
     alpha0 = CBF_config["alpha0"]
+    rho = CBF_config["rho"]
+    threshold = CBF_config["threshold"]
+    scaling = CBF_config["scaling"]
     f0 = CBF_config["f0"]
     gamma1 = CBF_config["gamma1"]
     gamma2 = CBF_config["gamma2"]
@@ -289,7 +292,6 @@ if __name__ == "__main__":
                 probs.getSmoothMinCBFConstraints(dq, all_P_np, all_quat_np, all_J_np, all_dJdq_np, alpha0)
             time_cvxpy_and_diff_helper_tmp += time.time()
 
-            rho = 10
             min_h = np.min(all_h_np)
             indices = np.where(rho*(all_h_np - min_h) < 708)[0]
             h_selected = all_h_np[indices]
@@ -316,8 +318,7 @@ if __name__ == "__main__":
                 tmp = np.array([0, -C[0,2], C[0,1], -C[0,4], C[0,3], -C[0,6], C[0,5]]).astype(config.np_dtype)
                 C[1,:] = tmp
                 ueq = np.zeros_like(u_nominal)
-                threshold = 1e-2
-                lb[1] = C[1,:] @ ueq + 1*(1-CBF/threshold)
+                lb[1] = C[1,:] @ ueq + scaling*(1-CBF/threshold)
                 ub[1] = np.inf
 
             g = -u_nominal
@@ -341,6 +342,7 @@ if __name__ == "__main__":
             CBF_tmp = np.zeros(n_CBF, dtype=config.np_dtype)
             phi1_tmp = 0
             phi2_tmp = 0
+            smooth_min_tmp = 0
 
         # Step the environment
         time_control_loop_end = time.time()

@@ -48,6 +48,19 @@ RUN apt-get update \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
+# Display
+RUN apt-get update \
+    && apt-get install -y -qq --no-install-recommends \
+    libglvnd0 \
+    libgl1 \
+    libglx0 \
+    libegl1 \
+    libxext6 \
+    libx11-6 \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+ENV NVIDIA_VISIBLE_DEVICES all
+ENV NVIDIA_DRIVER_CAPABILITIES graphics,utility,compute
 
 # Update Python in the base environment to 3.11
 RUN conda install python==3.11 \
@@ -96,6 +109,18 @@ RUN git clone https://github.com/cvxgrp/scs.git \
     && make install \
     && cd ..
 
+# Install liegroups
+RUN git clone https://github.com/utiasSTARS/liegroups.git \
+    && cd liegroups \
+    && pip install -e . \
+    && cd ..
+
+# Install FR3Py
+# RUN git clone https://github.com/Rooholla-KhorramBakht/FR3Py.git \
+#     && cd FR3Py \
+#     && pip install -e .\
+#     && cd ..
+
 # Install Scaling-Functions-Helper
 RUN git clone https://github.com/shiqingw/Scaling-Functions-Helper.git\
     && cd Scaling-Functions-Helper \
@@ -112,93 +137,6 @@ RUN git clone https://github.com/shiqingw/HOCBF-Helper.git\
     && cd HOCBF-Helper \
     && pip install -e . \
     && cd ..
-
-# Install liegroups
-RUN git clone https://github.com/utiasSTARS/liegroups.git \
-    && cd liegroups \
-    && pip install -e . \
-    && cd ..
-
-# Install FR3Py
-RUN git clone https://github.com/Rooholla-KhorramBakht/FR3Py.git \
-    && cd FR3Py \
-    && pip install -e .\
-    && cd ..
-
-# # Install libfranka
-# RUN git clone --recursive https://github.com/frankaemika/libfranka --branch 0.10.0 \
-#     && cd libfranka \
-#     && mkdir build \
-#     && cd build \
-#     && cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF .. \
-#     && cmake --build . \
-#     && cpack -G DEB \
-#     && dpkg -i libfranka*.deb \
-#     && cd ../.. \
-#     && rm -rf libfranka
-
-# # Install LCM
-# RUN apt-get update \
-#     && apt-get install -y --no-install-recommends \
-#     libglib2.0-dev \
-#     && apt-get clean \
-#     && rm -rf /var/lib/apt/lists/*
-# RUN git clone https://github.com/lcm-proj/lcm.git \
-#     && cd lcm \
-#     && mkdir build \
-#     && cd build \
-#     && cmake .. \
-#     && make \
-#     && make install \
-#     && cd ../lcm-python\
-#     && python -m pip install .\
-#     && cd ../.. \
-#     && rm -rf lcm
-
-# # Install C++ Bridge
-# RUN cd FR3Py/fr3_bridge \
-#     && mkdir build \
-#     && cd build \
-#     && cmake .. \
-#     && make -j $(( $(nproc) - 1 )) \
-#     && make \
-#     && make install \
-#     && cd ../.. 
-
-
-# # Setting up the real-time kernel
-# RUN apt-get update \
-#     && apt-get install -y --no-install-recommends \
-#     build-essential bc curl ca-certificates gnupg2 libssl-dev lsb-release libelf-dev bison flex dwarves zstd libncurses-dev \
-#     && apt-get clean \
-#     && rm -rf /var/lib/apt/lists/*
-# RUN curl -SLO https://www.kernel.org/pub/linux/kernel/v5.x/linux-5.9.1.tar.xz \
-#     && curl -SLO https://www.kernel.org/pub/linux/kernel/v5.x/linux-5.9.1.tar.sign \
-#     && curl -SLO https://www.kernel.org/pub/linux/kernel/projects/rt/5.9/patch-5.9.1-rt20.patch.xz \
-#     && curl -SLO https://www.kernel.org/pub/linux/kernel/projects/rt/5.9/patch-5.9.1-rt20.patch.sign \
-#     && xz -d *.xz \
-#     && tar xf linux-*.tar \
-#     && cd linux-*/ \
-#     && patch -p1 < ../patch-*.patch \
-#     && make olddefconfig \
-#     && make menuconfig \
-#     && make -j$(nproc) deb-pkg \
-#     && sudo dpkg -i ../linux-headers-*.deb ../linux-image-*.deb 
-
-# Display
-RUN apt-get update \
-    && apt-get install -y -qq --no-install-recommends \
-    libglvnd0 \
-    libgl1 \
-    libglx0 \
-    libegl1 \
-    libxext6 \
-    libx11-6 \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
-ENV NVIDIA_VISIBLE_DEVICES all
-ENV NVIDIA_DRIVER_CAPABILITIES graphics,utility,compute
-
 
 # Spin the container
 CMD ["tail", "-f", "/dev/null"]
