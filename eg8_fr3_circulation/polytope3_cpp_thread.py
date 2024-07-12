@@ -97,14 +97,15 @@ if __name__ == "__main__":
             id_geom_offset = env.viewer.user_scn.ngeom
 
     # Compute desired trajectory
-    t_final = 30
     t_1 = 10
-    t_2 = 20
+    t_2 = 15
+    t_3 = 25
+    t_final = 35
     P_EE_0 = np.array([-0.10, 0.26, 1.31])
-    P_EE_1 = np.array([-0.07, 0.61, 0.86])
-    P_EE_2 = np.array([0.20, 0.25, 0.86])
-    via_points = np.array([P_EE_0, P_EE_1, P_EE_2, P_EE_2])
-    target_time = np.array([0, t_1, t_2, t_final])
+    P_EE_1 = np.array([-0.07, 0.61, 0.95])
+    P_EE_2 = np.array([0.26, 0.25, 0.95])
+    via_points = np.array([P_EE_0, P_EE_1, P_EE_1, P_EE_2, P_EE_2])
+    target_time = np.array([0, t_1, t_2, t_3, t_final])
     Ts = 0.01
     traj_line = PositionTrapezoidalTrajectory(via_points, target_time, T_antp=0.2, Ts=Ts)
 
@@ -123,8 +124,8 @@ if __name__ == "__main__":
     yaw = np.pi/6
     R_EE_2 = Rotation.from_euler('xyz', [roll, pitch, yaw]).as_matrix()
 
-    orientations = np.array([R_EE_0, R_EE_1, R_EE_2, R_EE_2], dtype=config.np_dtype)
-    target_time = np.array([0, t_1, t_2, t_final])
+    orientations = np.array([R_EE_0, R_EE_1, R_EE_1, R_EE_2, R_EE_2], dtype=config.np_dtype)
+    target_time = np.array([0, t_1, t_2, t_3, t_final])
     traj_orientation = OrientationTrapezoidalTrajectory(orientations, target_time, Ts=Ts)
 
     # Visualize the trajectory

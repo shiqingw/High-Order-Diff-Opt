@@ -24,6 +24,11 @@ from cores.utils.trajectory_utils import PositionTrapezoidalTrajectory, Orientat
 from cores.obstacle_collections.polytope_collection import PolytopeCollection
 import multiprocessing
 from scipy.spatial.transform import Rotation
+import signal
+
+def signal_handler(signum, frame):
+    print("Signal handler called with signal", signum)
+    raise KeyboardInterrupt
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -97,14 +102,15 @@ if __name__ == "__main__":
             id_geom_offset = env.viewer.user_scn.ngeom
 
     # Compute desired trajectory
-    t_final = 30
     t_1 = 10
-    t_2 = 20
+    t_2 = 15
+    t_3 = 25
+    t_final = 35
     P_EE_0 = np.array([-0.10, 0.26, 1.31])
-    P_EE_1 = np.array([-0.07, 0.61, 0.86])
-    P_EE_2 = np.array([0.20, 0.25, 0.86])
-    via_points = np.array([P_EE_0, P_EE_1, P_EE_2, P_EE_2])
-    target_time = np.array([0, t_1, t_2, t_final])
+    P_EE_1 = np.array([-0.07, 0.61, 0.95])
+    P_EE_2 = np.array([0.26, 0.25, 0.95])
+    via_points = np.array([P_EE_0, P_EE_1, P_EE_1, P_EE_2, P_EE_2])
+    target_time = np.array([0, t_1, t_2, t_3, t_final])
     Ts = 0.01
     traj_line = PositionTrapezoidalTrajectory(via_points, target_time, T_antp=0.2, Ts=Ts)
 
@@ -123,8 +129,8 @@ if __name__ == "__main__":
     yaw = np.pi/6
     R_EE_2 = Rotation.from_euler('xyz', [roll, pitch, yaw]).as_matrix()
 
-    orientations = np.array([R_EE_0, R_EE_1, R_EE_2, R_EE_2], dtype=config.np_dtype)
-    target_time = np.array([0, t_1, t_2, t_final])
+    orientations = np.array([R_EE_0, R_EE_1, R_EE_1, R_EE_2, R_EE_2], dtype=config.np_dtype)
+    target_time = np.array([0, t_1, t_2, t_3, t_final])
     traj_orientation = OrientationTrapezoidalTrajectory(orientations, target_time, Ts=Ts)
 
     # Visualize the trajectory
@@ -193,6 +199,8 @@ if __name__ == "__main__":
     time_cbf_qp = np.zeros(horizon, dtype=config.np_dtype)
     time_control_loop = np.zeros(horizon, dtype=config.np_dtype)
     all_info = []
+
+    signal.signal(signal.SIGINT, signal_handler)
 
     # Forward simulate the system
     P_EE_prev = info["P_EE"]
@@ -293,7 +301,7 @@ if __name__ == "__main__":
             time_cvxpy_and_diff_helper_tmp += time.time()
 
             min_h = np.min(all_h_np)
-            indices = np.where(rho*(all_h_np - min_h) < 708)[0]
+            indices = np.where(rho*(all_h_np - min_h) < 700)[0]
             h_selected = all_h_np[indices]
             first_order_all_average_scalar_selected = first_order_all_average_scalar_np[indices]
             second_order_all_average_scalar_selected = second_order_all_average_scalar_np[indices]
@@ -313,12 +321,13 @@ if __name__ == "__main__":
             ub[0] = np.inf
 
             # Circulation constraints
-            if i*dt >= t_1:
+            if i*dt >= t_2-2:
                 # tmp = np.array([-C[0,1], C[0,0], -C[0,3], C[0,2], -C[0,5], C[0,4], 0]).astype(config.np_dtype) 
                 tmp = np.array([0, -C[0,2], C[0,1], -C[0,4], C[0,3], -C[0,6], C[0,5]]).astype(config.np_dtype)
                 C[1,:] = tmp
                 ueq = np.zeros_like(u_nominal)
-                lb[1] = C[1,:] @ ueq + scaling*(1-CBF/threshold)
+                # lb[1] = C[1,:] @ ueq + scaling*(1-CBF/threshold)
+                lb[1] = C[1,:] @ ueq + scaling*(1-np.exp(CBF-threshold))
                 ub[1] = np.inf
 
             g = -u_nominal

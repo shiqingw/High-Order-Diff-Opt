@@ -92,12 +92,12 @@
         "_selected_bbs": ["HAND_BB", "LINK7_BB", "LINK6_BB", "LINK5_2_BB", "LINK5_1_BB", "LINK4_BB", "LINK3_BB"],
         "selected_bbs": ["HAND_BB", "LINK7_BB", "LINK6_BB"],
         "alpha0": 1.03,
-        "rho": 10,
-        "threshold": 1e-2,
-        "scaling": 1,
-        "f0": 0.1,
-        "gamma1": 10,
-        "gamma2": 10,
+        "rho": 4,
+        "threshold": 2e-2,
+        "scaling": 50,
+        "f0": 0.3,
+        "gamma1": 20,
+        "gamma2": 20,
         "compensation": 0
     },
 
