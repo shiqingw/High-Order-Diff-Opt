@@ -63,10 +63,20 @@ if __name__ == "__main__":
     joint_lb = np.array(joint_limits_config["lb"], dtype=config.np_dtype)
     joint_ub = np.array(joint_limits_config["ub"], dtype=config.np_dtype)
 
-    # Joint input_torque limits
+    # Joint input torque limits
     input_torque_limits_config = test_settings["input_torque_limits_config"]
     input_torque_lb = np.array(input_torque_limits_config["lb"], dtype=config.np_dtype)
     input_torque_ub = np.array(input_torque_limits_config["ub"], dtype=config.np_dtype)
+
+    # Joint velocity limits
+    dq_limits_config = test_settings["joint_velocity_limits_config"]
+    dq_lb = np.array(dq_limits_config["lb"], dtype=config.np_dtype)
+    dq_ub = np.array(dq_limits_config["ub"], dtype=config.np_dtype)
+
+    # End-effector velocity limits
+    v_EE_limits_config = test_settings["end_effector_velocity_limits_config"]
+    v_EE_lb = np.array(v_EE_limits_config["lb"], dtype=config.np_dtype)
+    v_EE_ub = np.array(v_EE_limits_config["ub"], dtype=config.np_dtype)
 
     # Create and reset simulation
     cam_distance = simulator_config["cam_distance"]
@@ -91,8 +101,8 @@ if __name__ == "__main__":
 
     # Obstacle
     obstacle_config = test_settings["obstacle_config"]
-    n_obstacle = len(obstacle_config)
-    obs_col = PolytopeCollection(3, n_obstacle, obstacle_config)
+    n_polytope = len(obstacle_config)
+    obs_col = PolytopeCollection(3, n_polytope, obstacle_config)
     id_geom_offset = 0
     for (i, obs_key) in enumerate(obs_col.face_equations.keys()):
         # add visual ellipsoids
@@ -160,28 +170,46 @@ if __name__ == "__main__":
 
     # Define proxuite problem
     print("==> Define proxuite problem")
+    n_obstacle = n_polytope + 1
     n_CBF = n_selected_BBs*n_obstacle
-    cbf_qp = init_proxsuite_qp(n_v=n_controls, n_eq=0, n_in=n_controls+2)
+    n_in = n_controls + 2 + 3
+    cbf_qp = init_proxsuite_qp(n_v=n_controls, n_eq=0, n_in=n_in)
 
-    # Create workers
-    print("==> Create workers")
+    # Define SFs
+    robot_SFs = []
+    for (i, bb_key) in enumerate(selected_BBs):
+        ellipsoid_quadratic_coef = BB_coefs.coefs[bb_key]
+        SF_rob = sfh.Ellipsoid3d(True, ellipsoid_quadratic_coef, np.zeros(3))
+        robot_SFs.append(SF_rob)
+
+    polytope_SFs = []
+    for (i, obs_key) in enumerate(obs_col.face_equations.keys()):
+        A_obs_np = obs_col.face_equations[obs_key]["A"]
+        b_obs_np = obs_col.face_equations[obs_key]["b"]
+        obs_kappa = obstacle_kappa
+        SF_obs = sfh.LogSumExp3d(False, A_obs_np, b_obs_np, obs_kappa)
+        polytope_SFs.append(SF_obs)
+    
+    hyperplane_SFs = []
+    SF_hyperplane = sfh.Hyperplane3d(False, np.array([0,0,1]), -0.824+1)
+    hyperplane_SFs.append(SF_hyperplane)
+
+    # Define problems
     n_threads = max(multiprocessing.cpu_count() -1, 1)
     probs = hh.Problem3dCollection(n_threads)
-    for (i, bb_key) in enumerate(selected_BBs):
+
+    for i in range(len(selected_BBs)):
+        SF_rob = robot_SFs[i]
+        frame_id = i
         for (j, obs_key) in enumerate(obs_col.face_equations.keys()):
-            frame_id = i
-
-            ellipsoid_quadratic_coef = BB_coefs.coefs[bb_key]
-            SF_rob = sfh.Ellipsoid3d(True, ellipsoid_quadratic_coef, np.zeros(3))
-
-            A_obs_np = obs_col.face_equations[obs_key]["A"]
-            b_obs_np = obs_col.face_equations[obs_key]["b"]
-            obs_kappa = obstacle_kappa
+            SF_obs = polytope_SFs[j]
             vertices = obs_col.face_equations[obs_key]["vertices_in_world"]
-            SF_obs = sfh.LogSumExp3d(False, A_obs_np, b_obs_np, obs_kappa)
+            prob = hh.EllipsoidAndLogSumExp3dPrb(SF_rob, SF_obs, vertices)
+            probs.addProblem(prob, frame_id)
 
-            prob = hh.ElliposoidAndLogSumExp3dPrb(SF_rob, SF_obs, vertices)
-
+        for j in range(len(hyperplane_SFs)):
+            SF_obs = hyperplane_SFs[j]
+            prob = hh.EllipsoidAndHyperplane3dPrb(SF_rob, SF_obs)
             probs.addProblem(prob, frame_id)
 
     # Create records
@@ -275,9 +303,9 @@ if __name__ == "__main__":
         time_cvxpy_and_diff_helper_tmp = 0
         if CBF_config["active"]:
             # Matrices for the CBF-QP constraints
-            C = np.zeros([n_controls+2, n_controls], dtype=config.np_dtype)
-            lb = np.zeros(n_controls+2, dtype=config.np_dtype)
-            ub = np.zeros(n_controls+2, dtype=config.np_dtype)
+            C = np.zeros([n_in, n_controls], dtype=config.np_dtype)
+            lb = np.zeros(n_in, dtype=config.np_dtype)
+            ub = np.zeros(n_in, dtype=config.np_dtype)
             CBF_tmp = np.zeros(n_CBF, dtype=config.np_dtype)
             smooth_min_tmp = 0
             phi1_tmp = 0
@@ -327,19 +355,28 @@ if __name__ == "__main__":
                 C[1,:] = tmp
                 ueq = np.zeros_like(u_nominal)
                 # lb[1] = C[1,:] @ ueq + scaling*(1-CBF/threshold)
-                lb[1] = C[1,:] @ ueq + scaling*(1-np.exp(CBF-threshold))
+                lb[1] = C[1,:] @ ueq + scaling*(1-np.exp(1*(CBF-threshold)))
                 ub[1] = np.inf
 
             g = -u_nominal
             C[2:2+n_controls,:] = M_mj
             lb[2:2+n_controls] = input_torque_lb[:7] - nle_mj
             ub[2:2+n_controls] = input_torque_ub[:7] - nle_mj
+
+            C[2+n_controls:5+n_controls,:] = J_EE[0:3,:]*dt
+            lb[2+n_controls:5+n_controls] = v_EE_lb[:3] - v_EE[:3] - dJdq_EE[:3]*dt
+            ub[2+n_controls:5+n_controls] = v_EE_ub[:3] - v_EE[:3] - dJdq_EE[:3]*dt
+
+            # C[2+n_controls:9+n_controls,:] = np.eye(7)*dt
+            # lb[2+n_controls:9+n_controls] = dq_lb[:7] - dq
+            # ub[2+n_controls:9+n_controls] = dq_ub[:7] - dq
+
             cbf_qp.update(g=g, C=C, l=lb, u=ub)
             time_cbf_qp_start = time.time()
             cbf_qp.solve()
             time_cbf_qp_end = time.time()
             u = cbf_qp.results.x
-            
+
             smooth_min_tmp = CBF
             phi1_tmp = phi1
             phi2_tmp = C[0,:] @ u - lb[0]
