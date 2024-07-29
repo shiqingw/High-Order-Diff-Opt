@@ -90,7 +90,7 @@ while np.linalg.norm(state[:2] - target_point) >= 1e-2 and t < 100:
 
     t += dt
 
-x_min, x_max = -4, 4
+x_min, x_max = -5, 5
 y_min, y_max = -10, 10
 spacing = 0.5
 x = np.arange(x_min, x_max, spacing)
@@ -173,12 +173,12 @@ plt.rcParams.update({"text.usetex": True,
                         "text.latex.preamble": r"\usepackage{amsmath}"})
 plt.rcParams.update({'pdf.fonttype': 42})
 
-label_fs = 20
-tick_fs = 20
-legend_fs = 30
+label_fs = 15
+tick_fs = 15
+legend_fs = 20
 linewidth = 5
 
-fig, ax = plt.subplots(figsize=(4,6), dpi=config.dpi, frameon=True)
+fig, ax = plt.subplots(figsize=(4,5), dpi=config.dpi, frameon=True)
 ax.quiver(x, y, a_x, a_y, color='#2F9E44', scale=6, scale_units='inches', width=0.005, zorder=0.1)
 ax.axis('equal')
 
@@ -225,8 +225,8 @@ plt.xlabel('$p_x$', fontsize=label_fs)
 plt.ylabel('$p_y$', fontsize=label_fs)
 plt.xticks(fontsize = tick_fs)
 plt.yticks(fontsize = tick_fs)
-plt.xlim(-3, 3)
-plt.ylim(-6, 6)
+plt.xlim(-4, 4)
+plt.ylim(-5.5, 5.5)
 plt.tight_layout()
 results_dir = "{}/eg6_results/001".format(str(Path(__file__).parent.parent))
 if circulation:

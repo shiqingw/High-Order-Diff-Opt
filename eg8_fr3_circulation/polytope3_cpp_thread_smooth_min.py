@@ -191,7 +191,7 @@ if __name__ == "__main__":
         polytope_SFs.append(SF_obs)
     
     hyperplane_SFs = []
-    SF_hyperplane = sfh.Hyperplane3d(False, np.array([0,0,1]), -0.824+1)
+    SF_hyperplane = sfh.Hyperplane3d(False, np.array([0,0,1]), -0.824)
     hyperplane_SFs.append(SF_hyperplane)
 
     # Define problems
@@ -363,9 +363,15 @@ if __name__ == "__main__":
             lb[2:2+n_controls] = input_torque_lb[:7] - nle_mj
             ub[2:2+n_controls] = input_torque_ub[:7] - nle_mj
 
-            C[2+n_controls:5+n_controls,:] = J_EE[0:3,:]*dt
-            lb[2+n_controls:5+n_controls] = v_EE_lb[:3] - v_EE[:3] - dJdq_EE[:3]*dt
-            ub[2+n_controls:5+n_controls] = v_EE_ub[:3] - v_EE[:3] - dJdq_EE[:3]*dt
+            # C[2+n_controls:5+n_controls,:] = J_EE[0:3,:]*dt
+            # lb[2+n_controls:5+n_controls] = v_EE_lb[:3] - v_EE[:3] - dJdq_EE[:3]*dt
+            # ub[2+n_controls:5+n_controls] = v_EE_ub[:3] - v_EE[:3] - dJdq_EE[:3]*dt
+
+            h_v_lb = v_EE[:3] - v_EE_lb[:3]
+            h_v_ub = v_EE_ub[:3] - v_EE[:3]
+            C[2+n_controls:5+n_controls,:] = J_EE[0:3,:]
+            lb[2+n_controls:5+n_controls] = - 20*h_v_lb - dJdq_EE[:3]
+            ub[2+n_controls:5+n_controls] = 20*h_v_ub - dJdq_EE[:3]
 
             # C[2+n_controls:9+n_controls,:] = np.eye(7)*dt
             # lb[2+n_controls:9+n_controls] = dq_lb[:7] - dq

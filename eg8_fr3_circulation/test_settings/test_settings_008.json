@@ -34,8 +34,8 @@
     },
 
     "end_effector_velocity_limits_config": {
-        "lb": [-0.05, -0.05, -0.05],
-        "ub": [0.05, 0.05, 0.05]
+        "lb": [-0.1, -0.1, -0.1],
+        "ub": [0.1, 0.1, 0.1]
     },
 
     "simulator_config":{
@@ -104,7 +104,7 @@
         "alpha0": 1.03,
         "rho": 4,
         "threshold": 2e-2,
-        "scaling": 50,
+        "scaling": 750,
         "f0": 0.3,
         "gamma1": 20,
         "gamma2": 20,

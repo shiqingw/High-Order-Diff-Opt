@@ -221,7 +221,7 @@ if __name__ == "__main__":
         polytope_SFs.append(SF_obs)
     
     hyperplane_SFs = []
-    SF_hyperplane = sfh.Hyperplane3d(False, np.array([0,0,1]), -0.824+1)
+    SF_hyperplane = sfh.Hyperplane3d(False, np.array([0,0,1]), -0.824)
     hyperplane_SFs.append(SF_hyperplane)
 
     # Define problems

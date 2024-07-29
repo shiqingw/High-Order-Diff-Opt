@@ -20,7 +20,7 @@ from liegroups import SO3
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--exp_num', default=2, type=int, help='test case number')
+    parser.add_argument('--exp_num', default=10, type=int, help='test case number')
     args = parser.parse_args()
 
     # Create result directory
@@ -43,9 +43,6 @@ if __name__ == "__main__":
 
     # Various configs
     simulator_config = test_settings["simulator_config"]
-    controller_config = test_settings["controller_config"]
-    CBF_config = test_settings["CBF_config"]
-    trajectory_config = test_settings["trajectory_config"]
 
     # Joint limits
     joint_limits_config = test_settings["joint_limits_config"]
@@ -65,9 +62,10 @@ if __name__ == "__main__":
     base_pos = simulator_config["base_pos"]
     base_quat = simulator_config["base_quat"]
     initial_joint_angles = test_settings["initial_joint_angles"]
+    initial_joint_angles = np.array([0.0, -0.79, 0.0, -2.36, 0.0, 1.57, 0.79, 0.04, 0.04])
     dt = 1.0/240.0
 
-    env = FR3MuJocoEnv(xml_name="fr3_on_table_with_bounding_boxes_circulation_polytope2", base_pos=base_pos, base_quat=base_quat,
+    env = FR3MuJocoEnv(xml_name="fr3_on_table_with_bounding_boxes_camera", base_pos=base_pos, base_quat=base_quat,
                     cam_distance=cam_distance, cam_azimuth=cam_azimuth, cam_elevation=cam_elevation, cam_lookat=cam_lookat, dt=dt)
     # env = FR3MuJocoEnv(xml_name="fr3_on_table_with_bounding_boxes_circulation_ellipsoid", base_pos=base_pos, base_quat=base_quat,
     #                 cam_distance=cam_distance, cam_azimuth=cam_azimuth, cam_elevation=cam_elevation, cam_lookat=cam_lookat, dt=dt)
@@ -146,7 +144,7 @@ if __name__ == "__main__":
         # Step the environment
         u = u[:7]
         finger_pos = 0.01
-        info = env.step(tau=u, finger_pos=finger_pos)
+        # info = env.step(tau=u, finger_pos=finger_pos)
 
     # Close the environment
     env.close()

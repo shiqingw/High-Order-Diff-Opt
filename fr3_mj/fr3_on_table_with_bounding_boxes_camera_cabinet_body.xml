@@ -1,7 +1,7 @@
 <mujoco model="fr3_on_table_with_bounding_boxes_body">
     <geom name="floor" size="0 0 0.05" type="plane" material="groundplane"/>
     
-    <body name="link0" childclass="fr3" pos="0.0 0.0 0.824" quat="1 0 0 0">
+    <body name="link0" childclass="fr3" pos="-0.25 0.0 0.824" quat="1 0 0 0">
         <inertial mass="0.629769" pos="-0.041018 -0.00014 0.049974"
         fullinertia="0.00315 0.00388 0.004285 8.2904e-7 0.00015 8.2299e-6"/>
         
@@ -89,7 +89,7 @@
                                 <geom mesh="link6_15" material="black" class="visual"/>
                                 <geom mesh="link6_16" material="white" class="visual"/>
                                 <geom mesh="link6_c" class="collision"/>
-                                <geom type="ellipsoid" size="0.08 0.08 0.11" pos="0 0 -0.03" contype="0" conaffinity="0" group="2" rgba="0.3921 0.5843 0.9294 0.5"/>
+                                <!-- <geom type="ellipsoid" size="0.08 0.08 0.11" pos="0 0 -0.03" contype="0" conaffinity="0" group="2" rgba="0.3921 0.5843 0.9294 0.5"/> -->
 
                                 <body name="link7" pos="0.088 0 0" quat="0.7071067811865476 0.7071067811865475 0.0 0.0">
                                     <inertial mass="7.35522e-01" pos="1.0517e-2 -4.252e-3 6.1597e-2"
@@ -104,7 +104,7 @@
                                     <geom mesh="link7_6" material="black" class="visual"/>
                                     <geom mesh="link7_7" material="white" class="visual"/>
                                     <geom mesh="link7_c" class="collision"/>
-                                    <geom type="ellipsoid" size="0.07 0.07 0.14" pos="0 0 0.01" contype="0" conaffinity="0" group="2" rgba="0.3921 0.5843 0.9294 0.5"/>
+                                    <!-- <geom type="ellipsoid" size="0.07 0.07 0.14" pos="0 0 0.01" contype="0" conaffinity="0" group="2" rgba="0.3921 0.5843 0.9294 0.5"/> -->
 
                                     <body name="hand" pos="0 0 0.107" quat="0.9238795 0 0 -0.3826834">
                                         <inertial mass="0.73" pos="-0.01 0 0.03" diaginertia="0.001 0.0025 0.0017"/>

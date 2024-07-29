@@ -178,7 +178,7 @@ if __name__ == "__main__":
         polytope_SFs.append(SF_obs)
     
     hyperplane_SFs = []
-    SF_hyperplane = sfh.Hyperplane3d(False, np.array([0,0,1]), -0.824+1)
+    SF_hyperplane = sfh.Hyperplane3d(False, np.array([0,0,1]), -0.824)
     hyperplane_SFs.append(SF_hyperplane)
 
     # Define problems
@@ -324,9 +324,15 @@ if __name__ == "__main__":
             lb[n_CBF:n_CBF+n_controls] = input_torque_lb[:7] - nle_mj
             ub[n_CBF:n_CBF+n_controls] = input_torque_ub[:7] - nle_mj
 
-            C[n_CBF+n_controls:n_CBF+n_controls+3,:] = J_EE[0:3,:]*dt
-            lb[n_CBF+n_controls:n_CBF+n_controls+3] = v_EE_lb[:3] - v_EE[:3] - dJdq_EE[:3]*dt
-            ub[n_CBF+n_controls:n_CBF+n_controls+3] = v_EE_ub[:3] - v_EE[:3] - dJdq_EE[:3]*dt
+            # C[n_CBF+n_controls:n_CBF+n_controls+3,:] = J_EE[0:3,:]*dt
+            # lb[n_CBF+n_controls:n_CBF+n_controls+3] = v_EE_lb[:3] - v_EE[:3] - dJdq_EE[:3]*dt
+            # ub[n_CBF+n_controls:n_CBF+n_controls+3] = v_EE_ub[:3] - v_EE[:3] - dJdq_EE[:3]*dt
+
+            h_v_lb = v_EE[:3] - v_EE_lb[:3]
+            h_v_ub = v_EE_ub[:3] - v_EE[:3]
+            C[n_CBF+n_controls:n_CBF+n_controls+3,:] = J_EE[0:3,:]
+            lb[n_CBF+n_controls:n_CBF+n_controls+3] = - 20*h_v_lb - dJdq_EE[:3]
+            ub[n_CBF+n_controls:n_CBF+n_controls+3] = 20*h_v_ub - dJdq_EE[:3]
 
             cbf_qp.update(g=g, C=C, l=lb, u=ub)
             time_cbf_qp_start = time.time()
