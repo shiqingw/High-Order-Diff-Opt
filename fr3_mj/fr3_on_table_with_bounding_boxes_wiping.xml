@@ -6,7 +6,7 @@
     <visual>
         <headlight diffuse="0.6 0.6 0.6" ambient="0.3 0.3 0.3" specular="0 0 0"/>
         <rgba haze="0.15 0.25 0.35 1"/>
-        <global azimuth="0" elevation="0" offwidth="1280" offheight="720"/>
+        <global azimuth="120" elevation="-20"/>
     </visual>
 
     <asset>
@@ -23,12 +23,9 @@
         <light name="top" pos="0 0 2" mode="trackcom"/>
         <light pos="0 0 1.5" dir="0 0 -1" directional="true"/>
 
-        <camera name="fixed" pos="2.56907786e+00 0.0  1.85006043e+00" quat="0.57922797 0.40557979 0.40557979 0.57922797" mode="fixed"/>
-
-        <include file="./table_body.xml"/>
+        <include file="./table_body_friction_offset.xml"/>
         <include file="./fr3_on_table_with_bounding_boxes_wiping_body.xml"/>
 
-        <geom type="ellipsoid" size="0.1 0.1 0.1" pos="0.2 -0.2 0.88" quat="1 0 0 0" rgba="1 0 0 1" contype="0" conaffinity="0"/>
     </worldbody>
 
     <include file="./fr3_motors.xml"/>

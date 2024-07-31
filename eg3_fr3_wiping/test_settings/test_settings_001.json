@@ -8,10 +8,10 @@
     "save_detection": 0,
     "save_scaling_function": 0,
     "zero_vel": 0,
-    "horizon_length": 1600,
+    "horizon_length": 3000,
     "step_every": 8,
     "save_every": 24,
-    "initial_joint_angles": [-0.29256659,  0.34414472,  0.29167903, -2.74919791, -1.0437246, 3.01909617, 1.74139947, 0.04, 0.04],
+    "initial_joint_angles": [0.0, -0.79, 0.0, -2.36, 0.0, 1.57, 0.79, 0.02, 0.02],
 
     "joint_limits_config":{
         "lb":[-2.3093, -1.5133, -2.4937, -2.7478, -2.48, 0.8521, -2.6895, 0, 0],
@@ -19,8 +19,18 @@
     },
 
     "input_torque_limits_config":{
-        "lb":[-87, -87, -87, -87, -87, -87, -87, -87, -87],
-        "ub":[87, 87, 87, 87, 87, 87, 87, 87, 87]
+        "lb":[-87, -87, -87, -87, -12, -12, -12, -12, -12],
+        "ub":[87, 87, 87, 87, 12, 12, 12, 12, 12]
+    },
+
+    "joint_acceleration_limits_config":{
+        "lb":[-10, -10, -10, -10, -10, -10, -10, -10, -10],
+        "ub":[10, 10, 10, 10, 10, 10, 10, 10, 10]
+    },
+
+    "end_effector_velocity_limits_config": {
+        "lb": [-0.2, -0.2, -0.2],
+        "ub": [0.2, 0.2, 0.2]
     },
 
     "simulator_config":{
@@ -29,10 +39,7 @@
         "cam_elevation": -20,
         "cam_lookat": [-0.25, 0.0, 0.824],
         "base_pos": [-0.25, 0.0, 0.824],
-        "base_quat": [0, 0, 0, 1],
-        "image_height": 720,
-        "image_width": 1280,
-        "save_video": 1
+        "base_quat": [0, 0, 0, 1]
     },
 
     "screenshot_config":{
@@ -47,33 +54,32 @@
         "fov": 90
     },
 
-    "obstacle_config":{
-        "size": [0.1, 0.1, 0.1],
-        "pos": [0.2, -0.2, 0.88],
-        "quat": [0, 0, 0, 1]
+    "corners":{
+        "corner1": [0.62, 0.81],
+        "corner2": [0.61, 0.27],
+        "corner3": [-0.24, 0.28],
+        "corner4": [-0.24, 0.83]
     },
 
-    "trajectory_config":{
-        "center": [0.25, 0, 0.81],
-        "radius": 0.1,
-        "angular_velocity": 1
+    "obstacle_config":{
+        "obs1":{
+            "type": "polytope2d",
+            "vertices": [[0.31, 0.59], [0.31, 0.28], [0.08, 0.28], [0.08, 0.59]],
+            "pos": [-0.25, 0.0],
+            "theta": 0.0
+        }
     },
 
     "CBF_config":{
         "active": 1,
-        "_selected_bbs": ["HAND_BB", "LINK7_BB", "LINK6_BB", "LINK5_2_BB", "LINK5_1_BB", "LINK4_BB", "LINK3_BB"],
-        "_alpha0": [1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3],
-        "_gamma1": [3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0],
-        "_gamma2": [10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0],
-        "_compensation": [1, 1, 1, 1, 1, 1, 1],
-        "selected_bbs": ["HAND_BB"],
-        "alpha0": [1.3],
-        "gamma1": [3.0],
-        "gamma2": [10.0],
-        "compensation": [1]
+        "alpha0": 1.03,
+        "f0": 1.1,
+        "gamma1": 20.0,
+        "gamma2": 20.0,
+        "compensation": 0.0
     },
 
-    "controller_config":{
-
+    "SF_config":{
+        "obstacle_kappa": 80.0
     }
 }

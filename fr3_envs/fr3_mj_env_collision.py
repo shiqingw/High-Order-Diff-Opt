@@ -236,6 +236,8 @@ class FR3MuJocoEnv:
                 scene.ngeom += 1
                 id_geom = self.ngeom + id_geom_offset
             self.ngeom += 1
+        elif id_geom_offset < scene.ngeom:
+            id_geom = id_geom_offset
         else:
             id_geom = scene.ngeom
             scene.ngeom += 1
@@ -247,6 +249,7 @@ class FR3MuJocoEnv:
                                 mujoco.mjtGeom.mjGEOM_CAPSULE, radius,
                                 point1[0], point1[1], point1[2],
                                 point2[0], point2[1], point2[2])
+        self.viewer.sync()
         return 
     
     def add_visual_ellipsoid(self, size, pos, mat, rgba, id_geom_offset=0, limit_num=False):
@@ -259,6 +262,8 @@ class FR3MuJocoEnv:
                 scene.ngeom += 1
                 id_geom = self.ngeom + id_geom_offset
             self.ngeom += 1
+        elif id_geom_offset < scene.ngeom:
+            id_geom = id_geom_offset
         else:
             id_geom = scene.ngeom
             scene.ngeom += 1

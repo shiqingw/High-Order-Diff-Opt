@@ -1,3 +1,30 @@
 Wed Jun 26 20:49:54 2024
 ERROR: could not initialize GLFW
 
+Tue Jul 30 18:28:26 2024
+WARNING: Nan, Inf or huge value in CTRL at ACTUATOR 0. The simulation is unstable. Time = 5.0333.
+
+Tue Jul 30 18:30:24 2024
+WARNING: Nan, Inf or huge value in CTRL at ACTUATOR 0. The simulation is unstable. Time = 5.3458.
+
+Tue Jul 30 18:31:11 2024
+WARNING: Nan, Inf or huge value in CTRL at ACTUATOR 0. The simulation is unstable. Time = 5.1833.
+
+Tue Jul 30 18:33:07 2024
+WARNING: Nan, Inf or huge value in CTRL at ACTUATOR 0. The simulation is unstable. Time = 5.0125.
+
+Tue Jul 30 19:08:36 2024
+WARNING: Nan, Inf or huge value in CTRL at ACTUATOR 0. The simulation is unstable. Time = 5.0625.
+
+Tue Jul 30 19:09:20 2024
+WARNING: Nan, Inf or huge value in CTRL at ACTUATOR 0. The simulation is unstable. Time = 5.0208.
+
+Tue Jul 30 20:29:52 2024
+WARNING: Nan, Inf or huge value in CTRL at ACTUATOR 0. The simulation is unstable. Time = 5.0083.
+
+Tue Jul 30 21:15:45 2024
+WARNING: Nan, Inf or huge value in CTRL at ACTUATOR 0. The simulation is unstable. Time = 5.0500.
+
+Tue Jul 30 21:17:52 2024
+WARNING: Nan, Inf or huge value in CTRL at ACTUATOR 0. The simulation is unstable. Time = 5.0458.
+
