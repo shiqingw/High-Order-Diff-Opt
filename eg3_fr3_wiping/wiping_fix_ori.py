@@ -442,7 +442,7 @@ if __name__ == "__main__":
 
             time_diff_helper_tmp -= time.time()
             all_h_np, all_h_dx, all_h_dxdx, all_phi1_np, all_actuation_np, all_lb_np, all_ub_np = \
-                probs.getCBFConstraints(all_P_np, all_theta_np, all_dx, alpha0, gamma1, gamma2, compensation)
+                probs.getCBFConstraintsFixedOrientation(all_P_np, all_theta_np, all_dx, alpha0, gamma1, gamma2, compensation)
             time_diff_helper_tmp += time.time()
 
             # CBF-QP constraints
@@ -477,6 +477,9 @@ if __name__ == "__main__":
         v_EE_dt = v_EE_dt_desired.copy()
         v_EE_dt[[0,1,5]] = dx_safe
 
+        v_EE_dt = v_EE_dt_desired.copy()
+        v_EE_dt[[0,1,5]] = dx_safe
+
         S = J_EE
         S_pinv = S.T @ np.linalg.pinv(S @ S.T + 0.01* np.eye(S.shape[0]))
         S_null = (np.eye(len(q)) - S_pinv @ S)
@@ -491,6 +494,7 @@ if __name__ == "__main__":
         Kd_joint = 40*np.diag([1, 1, 1, 1, 1, 1, 1]).astype(config.np_dtype)
         ddq = ddq_task + S_null @ (- Kp_joint @ e_joint - Kd_joint @ e_joint_dot)
 
+        # print(ddq)
         u = M_mj @ ddq + nle_mj
 
         # Step the environment

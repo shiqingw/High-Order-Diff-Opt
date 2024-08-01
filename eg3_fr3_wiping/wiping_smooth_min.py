@@ -72,6 +72,11 @@ if __name__ == "__main__":
     v_EE_lb = np.array(v_EE_limits_config["lb"], dtype=config.np_dtype)
     v_EE_ub = np.array(v_EE_limits_config["ub"], dtype=config.np_dtype)
 
+    # End-effector acceleration limits
+    a_EE_limits_config = test_settings["end_effector_acceleration_limits_config"]
+    a_EE_lb = np.array(a_EE_limits_config["lb"], dtype=config.np_dtype)
+    a_EE_ub = np.array(a_EE_limits_config["ub"], dtype=config.np_dtype)
+
     # Create and reset simulation
     cam_distance = simulator_config["cam_distance"]
     cam_azimuth = simulator_config["cam_azimuth"]
@@ -185,6 +190,9 @@ if __name__ == "__main__":
     # CBF parameters
     CBF_config = test_settings["CBF_config"]
     alpha0 = CBF_config["alpha0"]
+    rho = CBF_config["rho"]
+    threshold = CBF_config["threshold"]
+    scaling = CBF_config["scaling"]
     f0 = CBF_config["f0"]
     gamma1 = CBF_config["gamma1"]
     gamma2 = CBF_config["gamma2"]
@@ -197,10 +205,8 @@ if __name__ == "__main__":
     n_obstacle = n_polytope + n_hyperplane
     n_robot = len(robot_SFs)
     n_CBF = n_robot*n_obstacle
-    n_in = n_CBF + 2
+    n_in = 1 + 1 + 2 + 2
     cbf_qp = init_proxsuite_qp(n_v=n_vars, n_eq=0, n_in=n_in)
-
-    ik_qp = init_proxsuite_qp(n_v=n_controls, n_eq=n_controls, n_in=6)
 
     # Compute desired trajectory
     t_final = 4
@@ -360,8 +366,9 @@ if __name__ == "__main__":
     time_diff_helper = np.zeros(horizon, dtype=config.np_dtype)
     time_cbf_qp = np.zeros(horizon, dtype=config.np_dtype)
     time_control_loop = np.zeros(horizon, dtype=config.np_dtype)
-    phi1s = np.zeros([horizon, n_CBF], dtype=config.np_dtype)
-    phi2s = np.zeros([horizon, n_CBF], dtype=config.np_dtype)
+    phi1s = np.zeros([horizon], dtype=config.np_dtype)
+    phi2s = np.zeros([horizon], dtype=config.np_dtype)
+    smooth_mins = np.zeros([horizon], dtype=config.np_dtype)
     cbf_values = np.zeros([horizon, n_CBF], dtype=config.np_dtype)
 
     P_EE_prev = info['P_EE'].copy()
@@ -441,22 +448,45 @@ if __name__ == "__main__":
             all_dx[0,:] = v_EE[[0,1,5]]
 
             time_diff_helper_tmp -= time.time()
-            all_h_np, all_h_dx, all_h_dxdx, all_phi1_np, all_actuation_np, all_lb_np, all_ub_np = \
-                probs.getCBFConstraints(all_P_np, all_theta_np, all_dx, alpha0, gamma1, gamma2, compensation)
+            all_h_np, _, _, first_order_all_average_scalar_np, second_order_all_average_scalar_np, second_order_all_average_vector_np = \
+                probs.getSmoothMinCBFConstraintsFixedOrientation(all_P_np, all_theta_np, all_dx, alpha0)
             time_diff_helper_tmp += time.time()
 
+            min_h = np.min(all_h_np)
+            indices = np.where(rho*(all_h_np - min_h) < 700)[0]
+            h_selected = all_h_np[indices]
+            first_order_all_average_scalar_selected = first_order_all_average_scalar_np[indices]
+            second_order_all_average_scalar_selected = second_order_all_average_scalar_np[indices]
+            second_order_all_average_vector_selected = second_order_all_average_vector_np[indices,:]
+
+            f, f_dh, f_dhdh = sfh.getSmoothMinimumAndLocalGradientAndHessian(rho, h_selected)
+
             # CBF-QP constraints
-            C[0:n_CBF,:] = all_actuation_np
-            lb[0:n_CBF] = all_lb_np
-            ub[0:n_CBF] = all_ub_np
-            CBF_tmp = all_h_np
-            phi1_tmp = all_phi1_np
+            CBF = f - f0
+            print(CBF, np.min(all_h_np))
+            dCBF =  f_dh @ first_order_all_average_scalar_selected # scalar
+            phi1 = dCBF + gamma1 * CBF
+
+            C[0,:] = f_dh @ second_order_all_average_vector_selected
+            lb[0] = - gamma2*phi1 - gamma1*dCBF - first_order_all_average_scalar_selected.T @ f_dhdh @ first_order_all_average_scalar_selected \
+                    - f_dh @ second_order_all_average_scalar_selected + compensation
+            ub[0] = np.inf
+
+            tmp = np.array([-C[0,1], C[0,0], 0]).astype(config.np_dtype)
+            C[1,:] = tmp
+            ueq = np.zeros(3)
+            lb[1] = C[1,:] @ ueq + scaling*(1-np.exp(1*(CBF-threshold)))
+            ub[1] = np.inf
 
             h_v_lb = v_EE[0:2] - v_EE_lb[0:2]
             h_v_ub = v_EE_ub[0:2] - v_EE[0:2]
-            C[n_CBF:n_CBF+2, :] = np.eye(2, 3)
-            lb[n_CBF:n_CBF+2] = -20*h_v_lb
-            ub[n_CBF:n_CBF+2] = 20*h_v_ub
+            C[2:4, :] = np.eye(2, 3)
+            lb[2:4] = -20*h_v_lb
+            ub[2:4] = 20*h_v_ub
+
+            C[4:6, :] = np.eye(2, 3)
+            lb[4:6] = a_EE_lb[0:2]
+            ub[4:6] = a_EE_ub[0:2]
             
             g = -v_EE_dt_desired[[0,1,5]]
 
@@ -465,20 +495,24 @@ if __name__ == "__main__":
             cbf_qp.solve()
             time_cbf_qp_tmp += time.time()
             dx_safe = cbf_qp.results.x
-            for kk in range(n_CBF):
-                phi2_tmp[kk] = C[kk,:] @ dx_safe - lb[kk]
+            print(cbf_qp.results.info.status)
+            
+            smooth_min_tmp = CBF
+            phi1_tmp = phi1
+            phi2_tmp = C[0,:] @ dx_safe - lb[0]
 
         else:
             dx_safe = v_EE_dt_desired[[0,1,5]]
-            phi1_tmp = np.zeros(n_CBF)
-            phi2_tmp = np.zeros(n_CBF)
+            phi1_tmp = 0
+            phi2_tmp = 0
+            smooth_min_tmp = 0
             CBF_tmp = np.zeros(n_CBF, dtype=config.np_dtype)
 
         v_EE_dt = v_EE_dt_desired.copy()
         v_EE_dt[[0,1,5]] = dx_safe
 
         S = J_EE
-        S_pinv = S.T @ np.linalg.pinv(S @ S.T + 0.01* np.eye(S.shape[0]))
+        S_pinv = S.T @ np.linalg.pinv(S @ S.T + 0.0* np.eye(S.shape[0]))
         S_null = (np.eye(len(q)) - S_pinv @ S)
         ddq_task = S_pinv @ (v_EE_dt - dJdq_EE)
 
@@ -508,9 +542,10 @@ if __name__ == "__main__":
         time_diff_helper[i] = time_diff_helper_tmp
         time_cbf_qp[i] = time_cbf_qp_tmp
         time_control_loop[i] = time_control_loop_end - time_control_loop_start
-        phi1s[i,:] = phi1_tmp
-        phi2s[i,:] = phi2_tmp
+        phi1s[i] = phi1_tmp
+        phi2s[i] = phi2_tmp
         cbf_values[i,:] = CBF_tmp
+        smooth_mins[i] = smooth_min_tmp
 
     # Close the environment
     env.close()
@@ -522,6 +557,7 @@ if __name__ == "__main__":
                "phi1": phi1s,
                "phi2": phi2s,
                "cbf_values": cbf_values,
+               "smooth_mins": smooth_mins,
                "time_diff_helper": time_diff_helper,
                "time_cbf_qp": time_cbf_qp,
                "time_control_loop": time_control_loop}
@@ -559,15 +595,22 @@ if __name__ == "__main__":
     plt.tight_layout()
     plt.savefig(os.path.join(results_dir, 'plot_P_EE_z.pdf'))
 
-    for i in range(n_CBF):
-        fig, ax = plt.subplots(figsize=(10,8), dpi=config.dpi, frameon=True)
-        plt.plot(time_all, phi1s[:,i], label="phi1")
-        plt.plot(time_all, phi2s[:,i], label="phi2")
-        plt.axhline(y = 0.0, color = 'black', linestyle = 'dotted', linewidth = 2)
-        plt.legend()
-        plt.tight_layout()
-        plt.savefig(os.path.join(results_dir, 'plot_phi_{:d}.pdf'.format(i+1)))
-        plt.close(fig)
+    fig, ax = plt.subplots(figsize=(10,8), dpi=config.dpi, frameon=True)
+    plt.plot(time_all, phi1s, label="phi1")
+    plt.plot(time_all, phi2s, label="phi2")
+    plt.axhline(y = 0.0, color = 'black', linestyle = 'dotted', linewidth = 2)
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(os.path.join(results_dir, 'plot_phi.pdf'))
+    plt.close(fig)
+
+    fig, ax = plt.subplots(figsize=(10,8), dpi=config.dpi, frameon=True)
+    plt.plot(time_all, smooth_mins, label="smooth_mins")
+    plt.axhline(y = 0.0, color = 'black', linestyle = 'dotted', linewidth = 2)
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(os.path.join(results_dir, 'plot_smooth_min.pdf'))
+    plt.close(fig)
     
     for i in range(n_CBF):
         fig, ax = plt.subplots(figsize=(10,8), dpi=config.dpi, frameon=True)

@@ -33,6 +33,11 @@
         "ub": [0.2, 0.2, 0.2]
     },
 
+    "end_effector_acceleration_limits_config": {
+        "lb": [-1.0, -1.0, -1.0],
+        "ub": [1.0, 1.0, 1.0]
+    },
+
     "simulator_config":{
         "cam_distance": 3.0, 
         "cam_azimuth": 180,
@@ -64,7 +69,8 @@
     "obstacle_config":{
         "obs1":{
             "type": "polytope2d",
-            "vertices": [[0.31, 0.59], [0.31, 0.28], [0.08, 0.28], [0.08, 0.59]],
+            "vertices_": [[0.31, 0.59], [0.31, 0.28], [0.08, 0.28], [0.08, 0.59]],
+            "vertices": [[0.31, 0.59], [0.31, 0.45], [0.08, 0.45], [0.08, 0.59]],
             "pos": [-0.25, 0.0],
             "theta": 0.0
         }
@@ -73,10 +79,13 @@
     "CBF_config":{
         "active": 1,
         "alpha0": 1.03,
-        "f0": 1.1,
-        "gamma1": 20.0,
-        "gamma2": 20.0,
-        "compensation": 0.0
+        "rho": 5,
+        "threshold": 1e-2,
+        "scaling": 20,
+        "f0": 0.3,
+        "gamma1": 20,
+        "gamma2": 20,
+        "compensation": 0
     },
 
     "SF_config":{
