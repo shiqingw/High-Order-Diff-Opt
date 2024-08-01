@@ -208,6 +208,11 @@ if __name__ == "__main__":
     n_in = 1 + 1 + 2 + 2
     cbf_qp = init_proxsuite_qp(n_v=n_vars, n_eq=0, n_in=n_in)
 
+    ik_n_vars = 7
+    ik_n_eq = 6
+    ik_n_in = 7
+    ik_qp = init_proxsuite_qp(n_v=ik_n_vars, n_eq=ik_n_eq, n_in=ik_n_in)
+
     # Compute desired trajectory
     t_final = 4
     P_EE_0 = info['P_EE'].copy()
@@ -318,8 +323,8 @@ if __name__ == "__main__":
 
     # Define cleaning trajectories
     t_1 = 1
-    t_2 = 6
-    t_final = 11
+    t_2 = 13
+    t_final = 25
 
     # Translational trajectory
     P_EE_start = info['P_EE'].copy()
@@ -463,7 +468,7 @@ if __name__ == "__main__":
 
             # CBF-QP constraints
             CBF = f - f0
-            print(CBF, np.min(all_h_np))
+            # print(CBF, np.min(all_h_np))
             dCBF =  f_dh @ first_order_all_average_scalar_selected # scalar
             phi1 = dCBF + gamma1 * CBF
 
@@ -475,8 +480,9 @@ if __name__ == "__main__":
             tmp = np.array([-C[0,1], C[0,0], 0]).astype(config.np_dtype)
             C[1,:] = tmp
             ueq = np.zeros(3)
-            lb[1] = C[1,:] @ ueq + scaling*(1-np.exp(1*(CBF-threshold)))
+            lb[1] = C[1,:] @ ueq + scaling*(1-np.exp(2*(CBF-threshold))) + 1000*(np.exp(-(np.linalg.norm(v_EE[0:2])/0.75)**2) - 1)
             ub[1] = np.inf
+            print(lb[1])
 
             h_v_lb = v_EE[0:2] - v_EE_lb[0:2]
             h_v_ub = v_EE_ub[0:2] - v_EE[0:2]
@@ -495,7 +501,7 @@ if __name__ == "__main__":
             cbf_qp.solve()
             time_cbf_qp_tmp += time.time()
             dx_safe = cbf_qp.results.x
-            print(cbf_qp.results.info.status)
+            # print(cbf_qp.results.info.status)
             
             smooth_min_tmp = CBF
             phi1_tmp = phi1
@@ -515,6 +521,17 @@ if __name__ == "__main__":
         S_pinv = S.T @ np.linalg.pinv(S @ S.T + 0.0* np.eye(S.shape[0]))
         S_null = (np.eye(len(q)) - S_pinv @ S)
         ddq_task = S_pinv @ (v_EE_dt - dJdq_EE)
+
+        # # Inverse kinematics
+        # g_ik = -ddq_task_nominal
+        # A_ik = J_EE
+        # b_ik = v_EE_dt - dJdq_EE
+        # C_ik = np.eye(7)
+        # lb_ik = joint_acc_lb[:7]
+        # ub_ik = joint_acc_ub[:7]
+        # ik_qp.update(g=g_ik, A=A_ik, b=b_ik, C=C_ik, l=lb_ik, u=ub_ik)
+        # ik_qp.solve()
+        # ddq_task = ik_qp.results.x
 
         # Secondary objective: encourage the joints to remain close to the initial configuration
         W = np.diag(1.0/(joint_ub-joint_lb))[:7,:7]

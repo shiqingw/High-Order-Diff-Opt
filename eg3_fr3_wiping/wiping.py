@@ -478,7 +478,7 @@ if __name__ == "__main__":
         v_EE_dt[[0,1,5]] = dx_safe
 
         S = J_EE
-        S_pinv = S.T @ np.linalg.pinv(S @ S.T + 0.01* np.eye(S.shape[0]))
+        S_pinv = S.T @ np.linalg.pinv(S @ S.T + 0.00* np.eye(S.shape[0]))
         S_null = (np.eye(len(q)) - S_pinv @ S)
         ddq_task = S_pinv @ (v_EE_dt - dJdq_EE)
 
