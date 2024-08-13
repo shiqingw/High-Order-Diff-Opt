@@ -25,6 +25,7 @@ from cores.utils.trajectory_utils import PositionTrapezoidalTrajectory, Orientat
 from cores.obstacle_collections.polytope_collection import PolytopeCollection
 import multiprocessing
 from scipy.spatial.transform import Rotation
+import osqp
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -480,8 +481,6 @@ if __name__ == "__main__":
             lb[1] = C[1,:] @ ueq + scaling*(1-np.exp(2*(CBF-threshold))) + 1000*(np.exp(-(np.linalg.norm(v_EE[0:2])/1)**2) - 1)
             ub[1] = np.inf
 
-            print(lb[1])
-
             h_v_lb = v_EE[0:2] - v_EE_lb[0:2]
             h_v_ub = v_EE_ub[0:2] - v_EE[0:2]
             C[2:4, :] = np.eye(2, 3)
@@ -504,7 +503,6 @@ if __name__ == "__main__":
             results = cbf_qp.solve()
             time_cbf_qp_tmp += time.time()
             dx_safe = results.x
-            # print(results.info.status)
             
             smooth_min_tmp = CBF
             phi1_tmp = phi1
@@ -523,7 +521,18 @@ if __name__ == "__main__":
         S = J_EE
         S_pinv = S.T @ np.linalg.pinv(S @ S.T + 0.0* np.eye(S.shape[0]))
         S_null = (np.eye(len(q)) - S_pinv @ S)
-        ddq_task = S_pinv @ (v_EE_dt - dJdq_EE)
+        # ddq_task = S_pinv @ (v_EE_dt - dJdq_EE)
+
+        ik_qp = osqp.OSQP()
+        P_ik = J_EE.T @ J_EE
+        Px_ik = sparse.csc_matrix(P_ik)
+        q_ik = np.zeros(n_controls)
+        Ax_ik = sparse.eye(n_controls, format='csc')
+        lb_ik = joint_acc_lb[:n_controls]
+        ub_ik = joint_acc_ub[:n_controls]
+        ik_qp.setup(P=Px_ik, q=q, A=Ax_ik, l=lb_ik, u=ub_ik, verbose=False)
+        results_ik = ik_qp.solve()
+        ddq_task = results_ik.x
 
         # Secondary objective: encourage the joints to remain close to the initial configuration
         W = np.diag(1.0/(joint_ub-joint_lb))[:7,:7]

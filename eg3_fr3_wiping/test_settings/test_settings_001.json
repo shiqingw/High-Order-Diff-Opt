@@ -81,10 +81,10 @@
         "alpha0": 1.03,
         "rho": 5,
         "threshold": 1e-2,
-        "scaling": 40,
+        "scaling": 100,
         "f0": 0.3,
-        "gamma1": 20,
-        "gamma2": 20,
+        "gamma1": 10,
+        "gamma2": 10,
         "compensation": 0
     },
 
