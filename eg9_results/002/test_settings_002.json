@@ -1,0 +1,74 @@
+{   
+    "seed": 0,
+    "image_save_format": "png",
+    "record": 0,
+    "save_screeshot": 0,
+    "save_rgb": 0,
+    "save_depth": 0,
+    "save_detection": 0,
+    "save_scaling_function": 0,
+    "zero_vel": 0,
+    "horizon_length": 3000,
+    "step_every": 8,
+    "save_every": 24,
+    "initial_joint_angles": [0.0, -0.79, 0.0, -2.36, 0.0, 1.57, 0.79, 0.01, 0.01],
+    "ball_pos": [1.5, 0.0, 1.3],
+    "ball_vel": [-2.0, 0.0, 3.5],
+
+    "joint_limits_config":{
+        "lb":[-2.3093, -1.5133, -2.4937, -2.7478, -2.48, 0.8521, -2.6895, 0, 0],
+        "ub":[2.3093, 1.5133, 2.4937, -0.4461, 2.48, 4.2094, 2.6895, 0.04, 0.04]
+    },
+
+    "input_torque_limits_config":{
+        "lb":[-87, -87, -87, -87, -12, -12, -12, -12, -12],
+        "ub":[87, 87, 87, 87, 12, 12, 12, 12, 12]
+    },
+
+    "joint_acceleration_limits_config":{
+        "lb":[-10, -10, -10, -10, -10, -10, -10, -10, -10],
+        "ub":[10, 10, 10, 10, 10, 10, 10, 10, 10]
+    },
+
+    "joint_velocity_limits_config":{
+        "lb":[-2.175, -2.175, -2.175, -2.610, -2.610, -2.610, -2.610, -2.610, -2.610],
+        "ub":[2.175, 2.175, 2.175, 2.610, 2.610, 2.610, 2.610, 2.610, 2.610]
+    },
+
+    "end_effector_velocity_limits_config": {
+        "lb": [-0.05, -0.05, -0.05],
+        "ub": [0.05, 0.05, 0.05]
+    },
+
+    "simulator_config":{
+        "cam_distance": 3.0, 
+        "cam_azimuth": 180,
+        "cam_elevation": -20,
+        "cam_lookat": [-0.25, 0.0, 0.824],
+        "base_pos": [-0.25, 0.0, 0.824],
+        "base_quat": [0, 0, 0, 1]
+    },
+
+    "screenshot_config":{
+        "cameraDistance": 0.8,
+        "cameraYaw": 90,
+        "cameraPitch": -30,
+        "lookat":[0.5, 0.0, 0.4],
+        "pixelWidth": 1280,
+        "pixelHeight": 720,
+        "nearPlane": 0.01,
+        "farPlane": 100,
+        "fov": 90
+    },
+
+    "CBF_config":{
+        "active": 1,
+        "_selected_bbs": ["HAND_BB", "LINK7_BB", "LINK6_BB", "LINK5_2_BB", "LINK5_1_BB", "LINK4_BB", "LINK3_BB"],
+        "selected_bbs": ["HAND_BB"],
+        "alpha0": 1.03,
+        "f0": 1.1,
+        "gamma1": 10,
+        "gamma2": 10,
+        "compensation": 0
+    }
+}

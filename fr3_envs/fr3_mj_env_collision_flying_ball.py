@@ -199,6 +199,14 @@ class FR3MuJocoEnv:
 
         return info
 
+    def ball_future_pos_and_vel(self, t):
+        c0 = self.data.qpos[9:12]
+        c1 = self.data.qvel[9:12]
+        c2 = np.array([0,0,-9.81])
+        future_pos = 0.5*t**2*c2 + t*c1 + c0
+        future_vel = t*c2 + c1
+        return future_pos, future_vel
+
     def get_dynamics(self, q, dq):
         """
         f.shape = (18, 1), g.shape = (18, 9)

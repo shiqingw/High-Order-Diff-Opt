@@ -42,7 +42,7 @@
 
     "simulator_config":{
         "cam_distance": 3.0, 
-        "cam_azimuth": 240,
+        "cam_azimuth": 0,
         "cam_elevation": -20,
         "cam_lookat": [-0.25, 0.0, 0.824],
         "base_pos": [-0.25, 0.0, 0.824],
@@ -67,8 +67,8 @@
         "selected_bbs": ["HAND_BB", "LINK7_BB", "LINK6_BB"],
         "alpha0": 1.03,
         "f0": 1.1,
-        "gamma1": 15,
-        "gamma2": 15,
+        "gamma1": 10,
+        "gamma2": 10,
         "compensation": 0
     }
 }

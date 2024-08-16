@@ -111,7 +111,7 @@ if __name__ == "__main__":
     print("==> Define proxuite problem")
     n_obstacle = 1
     n_CBF = n_selected_BBs*n_obstacle
-    n_in = n_controls + n_CBF + 7
+    n_in = n_CBF + n_controls + n_controls
     cbf_qp = init_osqp(n_v=n_controls, n_in=n_in)
 
     # Define SFs
@@ -140,7 +140,7 @@ if __name__ == "__main__":
 
     # Create records
     print("==> Create records")
-    t_final = 5.0
+    t_final = 2.0
     horizon = int(t_final/dt)
     times = np.linspace(0, (horizon-1)*dt, horizon)
     joint_angles = np.zeros([horizon, n_controls], dtype=config.np_dtype)
@@ -258,15 +258,11 @@ if __name__ == "__main__":
             lb[n_CBF:n_CBF+n_controls] = input_torque_lb[:7] - nle_mj
             ub[n_CBF:n_CBF+n_controls] = input_torque_ub[:7] - nle_mj
 
-            # C[n_CBF:n_CBF+n_controls,:] = np.eye(7)
-            # lb[n_CBF:n_CBF+n_controls] = joint_acc_lb[:7]
-            # ub[n_CBF:n_CBF+n_controls] = joint_acc_ub[:7]
-
             # h_dq_lb = dq[:7] - joint_vel_lb[:7]
             # h_dq_ub = joint_vel_ub[:7] - dq[:7]
             # C[n_CBF+n_controls:n_CBF+2*n_controls,:] = np.eye(7)
-            # lb[n_CBF+n_controls:n_CBF+2*n_controls] = - 5*h_dq_lb
-            # ub[n_CBF+n_controls:n_CBF+2*n_controls+3] = 5*h_dq_ub
+            # lb[n_CBF+n_controls:n_CBF+2*n_controls] = - 20*h_dq_lb
+            # ub[n_CBF+n_controls:n_CBF+2*n_controls] = 20*h_dq_ub
 
             time_cbf_qp_start = time.time()
             data = C.flatten()
@@ -294,8 +290,8 @@ if __name__ == "__main__":
         u = M_mj @ u + nle_mj
         finger_pos = 0.01
         info = env.step(tau=u, finger_pos=finger_pos)
-        time.sleep(max(0,dt-time_control_loop_end+time_control_loop_start))
-        # time.sleep(max(0,0.02-time_control_loop_end+time_control_loop_start))
+        # time.sleep(max(0,dt-time_control_loop_end+time_control_loop_start))
+        time.sleep(max(0,0.02-time_control_loop_end+time_control_loop_start))
 
         # Record
         P_EE_prev = P_EE
@@ -345,6 +341,7 @@ if __name__ == "__main__":
         plt.axhline(y = joint_lb[i], color = 'black', linestyle = 'dotted', linewidth = 2)
         plt.axhline(y = joint_ub[i], color = 'black', linestyle = 'dotted', linewidth = 2)
         plt.legend()
+        plt.grid()
         plt.tight_layout()
         plt.savefig(os.path.join(results_dir, 'plot_q_{:d}.pdf'.format(i+1)))
         plt.close(fig)
@@ -358,6 +355,7 @@ if __name__ == "__main__":
         plt.axhline(y = input_torque_lb[i], color = 'black', linestyle = 'dotted', linewidth = 2)
         plt.axhline(y = input_torque_ub[i], color = 'black', linestyle = 'dotted', linewidth = 2)
         plt.legend()
+        plt.grid()
         plt.tight_layout()
         plt.savefig(os.path.join(results_dir, 'plot_controls_{:d}.pdf'.format(i+1)))
         plt.close(fig)
@@ -367,6 +365,7 @@ if __name__ == "__main__":
     plt.plot(times[0:horizon], phi2s, label="phi2")
     plt.axhline(y = 0.0, color = 'black', linestyle = 'dotted', linewidth = 2)
     plt.legend()
+    plt.grid()
     plt.tight_layout()
     plt.savefig(os.path.join(results_dir, 'plot_phi.pdf'))
     plt.close(fig)
@@ -377,6 +376,7 @@ if __name__ == "__main__":
         plt.plot(times, phi2s[:,i], label="phi2")
         plt.axhline(y = 0.0, color = 'black', linestyle = 'dotted', linewidth = 2)
         plt.legend()
+        plt.grid()
         plt.tight_layout()
         plt.savefig(os.path.join(results_dir, 'plot_phi_{:d}.pdf'.format(i+1)))
         plt.close(fig)
@@ -386,6 +386,7 @@ if __name__ == "__main__":
         plt.plot(times, cbf_values[:,i], label="CBF")
         plt.axhline(y = 0.0, color = 'black', linestyle = 'dotted', linewidth = 2)
         plt.legend()
+        plt.grid()
         plt.tight_layout()
         plt.savefig(os.path.join(results_dir, 'plot_cbf_{:d}.pdf'.format(i+1)))
         plt.close(fig)
@@ -394,6 +395,7 @@ if __name__ == "__main__":
     fig, ax = plt.subplots(figsize=(10,8), dpi=config.dpi, frameon=True)
     plt.plot(times, time_cvxpy_and_diff_helper, label="cvxpy and diff helper")
     plt.legend()
+    plt.grid()
     plt.tight_layout()
     plt.savefig(os.path.join(results_dir, 'plot_time_cvxpy_and_diff_helper.pdf'))
     plt.close(fig)
@@ -401,6 +403,7 @@ if __name__ == "__main__":
     fig, ax = plt.subplots(figsize=(10,8), dpi=config.dpi, frameon=True)
     plt.plot(times, time_cbf_qp, label="CBF-QP")
     plt.legend()
+    plt.grid()
     plt.tight_layout()
     plt.savefig(os.path.join(results_dir, 'plot_time_cbf_qp.pdf'))
     plt.close(fig)
@@ -408,6 +411,7 @@ if __name__ == "__main__":
     fig, ax = plt.subplots(figsize=(10,8), dpi=config.dpi, frameon=True)
     plt.plot(times, time_control_loop, label="control loop")
     plt.legend()
+    plt.grid()
     plt.tight_layout()
     plt.savefig(os.path.join(results_dir, 'plot_time_control_loop.pdf'))
     plt.close(fig)
