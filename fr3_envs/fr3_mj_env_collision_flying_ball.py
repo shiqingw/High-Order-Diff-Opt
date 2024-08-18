@@ -13,7 +13,7 @@ from pathlib import Path
 
 
 class FR3MuJocoEnv:
-    def __init__(self, render=True, xml_name="fr3", urdf_name="fr3_with_camera_and_bounding_boxes", base_pos=[0,0,0], base_quat=[0,0,0,1],
+    def __init__(self, render=False, xml_name="fr3", urdf_name="fr3_with_camera_and_bounding_boxes", base_pos=[0,0,0], base_quat=[0,0,0,1],
                  cam_distance=3.0, cam_azimuth=-90, cam_elevation=-45, cam_lookat=[0.0, -0.25, 0.824], dt=1.0/240):
         package_directory = str(Path(__file__).parent.parent)
 
@@ -34,6 +34,10 @@ class FR3MuJocoEnv:
             self.viewer.cam.azimuth = cam_azimuth
             self.viewer.cam.elevation = cam_elevation
             self.viewer.cam.lookat[:] = np.array(cam_lookat)
+
+            self.viewer.opt.flags[mujoco.mjtVisFlag.mjVIS_CONTACTPOINT] = True
+            self.viewer.opt.flags[mujoco.mjtVisFlag.mjVIS_CONTACTFORCE] = True
+            # self.viewer.opt.flags[mujoco.mjtVisFlag.mjVIS_TRANSPARENT] = True
         else:
             self.render = False
 
@@ -41,10 +45,6 @@ class FR3MuJocoEnv:
         self.renderer = None
         self.ngeom = 0
         self.maxgeom = 1000
-
-        self.viewer.opt.flags[mujoco.mjtVisFlag.mjVIS_CONTACTPOINT] = True
-        self.viewer.opt.flags[mujoco.mjtVisFlag.mjVIS_CONTACTFORCE] = True
-        # self.viewer.opt.flags[mujoco.mjtVisFlag.mjVIS_TRANSPARENT] = True
         
         self.model.vis.scale.contactwidth = 0.1
         self.model.vis.scale.contactheight = 0.03
@@ -103,7 +103,8 @@ class FR3MuJocoEnv:
             self.data.qpos[i+9] = ball_pos[i]
             self.data.qvel[i+9] = ball_vel[i]
         mujoco.mj_step(self.model, self.data)
-        self.viewer.sync()
+        if self.render:
+            self.viewer.sync()
         q, dq = self.data.qpos[:9].copy(), self.data.qvel[:9].copy()
         self.update_pinocchio(q, dq)
         info = self.get_info(q, dq)
@@ -115,7 +116,8 @@ class FR3MuJocoEnv:
 
         self.data.ctrl[:] = frc_applied
         mujoco.mj_step(self.model, self.data)
-        self.viewer.sync()
+        if self.render:
+            self.viewer.sync()
 
         q, dq = self.data.qpos[:9].copy(), self.data.qvel[:9].copy()
         self.update_pinocchio(q, dq)
@@ -124,7 +126,8 @@ class FR3MuJocoEnv:
         return info
 
     def close(self):
-        self.viewer.close()
+        if self.render:
+            self.viewer.close()
 
     def sleep(self, start_time):
         time_until_next_step = self.model.opt.timestep - (time.time() - start_time)
@@ -243,6 +246,8 @@ class FR3MuJocoEnv:
 
     def add_visual_capsule(self, point1, point2, radius, rgba, id_geom_offset=0, limit_num=False):
         """Adds one capsule to an mjvScene."""
+        if not self.render:
+            return
         scene = self.viewer.user_scn
         if limit_num:
             if self.ngeom >= self.maxgeom:
@@ -269,6 +274,8 @@ class FR3MuJocoEnv:
     
     def add_visual_ellipsoid(self, size, pos, mat, rgba, id_geom_offset=0, limit_num=False):
         """Adds one ellipsoid to an mjvScene."""
+        if not self.render:
+            return
         scene = self.viewer.user_scn
         if limit_num:
             if self.ngeom >= self.maxgeom:
