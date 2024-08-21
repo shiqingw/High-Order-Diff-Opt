@@ -12,7 +12,7 @@ from cores.configuration.configuration import Configuration
 
 config = Configuration()
 
-circulation = True
+circulation = False
 
 obstacle_center = np.array([0.0, -0.8])
 obstacle_a = 2
@@ -73,7 +73,7 @@ while np.linalg.norm(state[:2] - target_point) >= 1e-2 and t < 100:
         Omega = np.array([[0.0, -1.0],
                         [1.0, 0.0]])
         C[1,:] = Omega @ h_dp
-        lb[1] = offset - inclination*h
+        lb[1] = offset - inclination*h - 1.0*np.linalg.norm(v)
         ub[1] = np.inf
 
     H = np.eye(2)
@@ -141,7 +141,7 @@ for i in range(len(x_flatten)):
         Omega = np.array([[0.0, -1.0],
                         [1.0, 0.0]])
         C[1,:] = Omega @ h_dp
-        lb[1] = offset - inclination*h
+        lb[1] = offset - inclination*h - 1.0*np.linalg.norm(v)
         ub[1] = np.inf
 
     H = np.eye(2)
