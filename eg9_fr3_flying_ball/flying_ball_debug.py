@@ -26,7 +26,7 @@ from scipy.spatial.transform import Rotation
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--exp_num', default=2, type=int, help='test case number')
+    parser.add_argument('--exp_num', default=3, type=int, help='test case number')
     args = parser.parse_args()
 
     # Create result directory
@@ -199,7 +199,7 @@ if __name__ == "__main__":
                         np.clip(1-speed/10, 0, 1),
                         .5, 1.))
             radius=.003*(1+speed)
-            env.add_visual_capsule(P_EE_prev, P_EE, radius, rgba, id_geom_offset, True)
+            # env.add_visual_capsule(P_EE_prev, P_EE, radius, rgba, id_geom_offset, True)
 
             # Primary obejctive: tracking control
             W = np.diag(1.0/(joint_ub-joint_lb))[:7,:7]
@@ -324,7 +324,7 @@ if __name__ == "__main__":
             # time.sleep(max(0,dt-time_control_loop_end+time_control_loop_start))
             # time.sleep(max(0,0.02-time_control_loop_end+time_control_loop_start))
             if i == 100:
-                time.sleep(10)
+                time.sleep(40)
 
             # Record
             P_EE_prev = P_EE
@@ -342,123 +342,9 @@ if __name__ == "__main__":
         # Close the environment
         env.close()
 
-        print("==> Save results")
-        summary = {"times": times,
-                "joint_angles": joint_angles,
-                "controls": controls,
-                "desired_controls": desired_controls,
-                "phi1s": phi1s,
-                "phi2s": phi2s,
-                "cbf_values": cbf_values,
-                "time_cvxpy_and_diff_helper": time_cvxpy_and_diff_helper,
-                "time_cbf_qp": time_cbf_qp}
-        save_dict(summary, os.path.join(results_dir, 'summary.pkl'))
-
-        print("==> Save all_info")
-        save_dict(all_info, os.path.join(results_dir, 'all_info.pkl'))
-
         # Print solving time
         print("==> Control loop solving time: {:.5f} s".format(np.sum(time_control_loop)/i))
         print("==> CVXPY and diff opt solving time: {:.5f} s".format(np.sum(time_cvxpy_and_diff_helper)/i))
         print("==> CBF-QP solving time: {:.5f} s".format(np.sum(time_cbf_qp)/i))
-
-        # Visualization
-        print("==> Draw plots")
-        plt.rcParams['font.family'] = 'serif'
-        plt.rcParams.update({"text.usetex": True,
-                            "text.latex.preamble": r"\usepackage{amsmath}"})
-        plt.rcParams.update({'pdf.fonttype': 42})
-
-        for i in range(7):
-            fig, ax = plt.subplots(figsize=(10,8), dpi=config.dpi, frameon=True)
-            plt.plot(times, joint_angles[:,i], color="tab:blue", linestyle="-", label="q_{:d}".format(i+1))
-            plt.axhline(y = joint_lb[i], color = 'black', linestyle = 'dotted', linewidth = 2)
-            plt.axhline(y = joint_ub[i], color = 'black', linestyle = 'dotted', linewidth = 2)
-            plt.legend()
-            plt.grid()
-            plt.tight_layout()
-            plt.savefig(os.path.join(results_dir, 'plot_q_{:d}.pdf'.format(i+1)))
-            plt.close(fig)
-        
-        for i in range(7):
-            fig, ax = plt.subplots(figsize=(10,8), dpi=config.dpi, frameon=True)
-            plt.plot(times, joint_velocities[:,i], color="tab:blue", linestyle="-", label="dq_{:d}".format(i+1))
-            plt.axhline(y = joint_vel_lb[i], color = 'black', linestyle = 'dotted', linewidth = 2)
-            plt.axhline(y = joint_vel_ub[i], color = 'black', linestyle = 'dotted', linewidth = 2)
-            plt.legend()
-            plt.grid()
-            plt.tight_layout()
-            plt.savefig(os.path.join(results_dir, 'plot_dq_{:d}.pdf'.format(i+1)))
-            plt.close(fig)
-
-
-        for i in range(7):
-            fig, ax = plt.subplots(figsize=(10,8), dpi=config.dpi, frameon=True)
-            plt.plot(times, desired_controls[:,i], color="tab:blue", linestyle=":", 
-                    label="u_{:d} nominal".format(i+1))
-            plt.plot(times, controls[:,i], color="tab:blue", linestyle="-", label="\tau_{:d}".format(i+1))
-            plt.axhline(y = input_torque_lb[i], color = 'black', linestyle = 'dotted', linewidth = 2)
-            plt.axhline(y = input_torque_ub[i], color = 'black', linestyle = 'dotted', linewidth = 2)
-            plt.legend()
-            plt.grid()
-            plt.tight_layout()
-            plt.savefig(os.path.join(results_dir, 'plot_controls_{:d}.pdf'.format(i+1)))
-            plt.close(fig)
-
-        fig, ax = plt.subplots(figsize=(10,8), dpi=config.dpi, frameon=True)
-        plt.plot(times[0:horizon], phi1s, label="phi1")
-        plt.plot(times[0:horizon], phi2s, label="phi2")
-        plt.axhline(y = 0.0, color = 'black', linestyle = 'dotted', linewidth = 2)
-        plt.legend()
-        plt.grid()
-        plt.tight_layout()
-        plt.savefig(os.path.join(results_dir, 'plot_phi.pdf'))
-        plt.close(fig)
-
-        for i in range(n_CBF):
-            fig, ax = plt.subplots(figsize=(10,8), dpi=config.dpi, frameon=True)
-            plt.plot(times, phi1s[:,i], label="phi1")
-            plt.plot(times, phi2s[:,i], label="phi2")
-            plt.axhline(y = 0.0, color = 'black', linestyle = 'dotted', linewidth = 2)
-            plt.legend()
-            plt.grid()
-            plt.tight_layout()
-            plt.savefig(os.path.join(results_dir, 'plot_phi_{:d}.pdf'.format(i+1)))
-            plt.close(fig)
-        
-        for i in range(n_CBF):
-            fig, ax = plt.subplots(figsize=(10,8), dpi=config.dpi, frameon=True)
-            plt.plot(times, cbf_values[:,i], label="CBF")
-            plt.axhline(y = 0.0, color = 'black', linestyle = 'dotted', linewidth = 2)
-            plt.legend()
-            plt.grid()
-            plt.tight_layout()
-            plt.savefig(os.path.join(results_dir, 'plot_cbf_{:d}.pdf'.format(i+1)))
-            plt.close(fig)
-
-
-        fig, ax = plt.subplots(figsize=(10,8), dpi=config.dpi, frameon=True)
-        plt.plot(times, time_cvxpy_and_diff_helper, label="cvxpy and diff helper")
-        plt.legend()
-        plt.grid()
-        plt.tight_layout()
-        plt.savefig(os.path.join(results_dir, 'plot_time_cvxpy_and_diff_helper.pdf'))
-        plt.close(fig)
-
-        fig, ax = plt.subplots(figsize=(10,8), dpi=config.dpi, frameon=True)
-        plt.plot(times, time_cbf_qp, label="CBF-QP")
-        plt.legend()
-        plt.grid()
-        plt.tight_layout()
-        plt.savefig(os.path.join(results_dir, 'plot_time_cbf_qp.pdf'))
-        plt.close(fig)
-
-        fig, ax = plt.subplots(figsize=(10,8), dpi=config.dpi, frameon=True)
-        plt.plot(times, time_control_loop, label="control loop")
-        plt.legend()
-        plt.grid()
-        plt.tight_layout()
-        plt.savefig(os.path.join(results_dir, 'plot_time_control_loop.pdf'))
-        plt.close(fig)
 
         print("==> Done!")

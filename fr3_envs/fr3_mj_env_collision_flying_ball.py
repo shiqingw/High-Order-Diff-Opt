@@ -13,7 +13,7 @@ from pathlib import Path
 
 
 class FR3MuJocoEnv:
-    def __init__(self, render=False, xml_name="fr3", urdf_name="fr3_with_camera_and_bounding_boxes", base_pos=[0,0,0], base_quat=[0,0,0,1],
+    def __init__(self, render=True, xml_name="fr3", urdf_name="fr3_with_camera_and_bounding_boxes", base_pos=[0,0,0], base_quat=[0,0,0,1],
                  cam_distance=3.0, cam_azimuth=-90, cam_elevation=-45, cam_lookat=[0.0, -0.25, 0.824], dt=1.0/240):
         package_directory = str(Path(__file__).parent.parent)
 
