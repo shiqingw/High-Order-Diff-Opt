@@ -86,6 +86,8 @@ if __name__ == "__main__":
         nle_mj = info["nle_mj"]
 
         P_EE = info["P_EE"]
+        # print(P_EE)
+        # assert False
         R_EE = info["R_EE"]
         J_EE = info["J_EE"]
         dJdq_EE = info["dJdq_EE"]
@@ -97,7 +99,8 @@ if __name__ == "__main__":
             time_prev = time.time()
 
         # Primary obejctive: tracking control
-        P_d = np.array([0.25, 0.3, 0.86])
+        P_d = np.array([0.0, 0.0, 1.31])
+        # P_d = np.array([0.25, 0.3, 0.86])
         # P_d = np.array([0.1, 0.0, 1.8])
         # P_d = np.array([0.5, 0.0, 0.85])
         # P_d = np.array([0.25, 0.4, 0.85])
@@ -112,8 +115,8 @@ if __name__ == "__main__":
         #                 [0, -1, 0],
         #                 [0, 0, -1]], dtype=config.np_dtype)
         roll = np.pi
-        pitch = 0
-        yaw = np.pi/2
+        pitch = -np.pi/2
+        yaw = 0.0
         R_d = Rotation.from_euler('xyz', [roll, pitch, yaw]).as_matrix()
 
         # Create a Rotation object from RPY
