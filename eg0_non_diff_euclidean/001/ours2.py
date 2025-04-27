@@ -4,8 +4,7 @@ import matplotlib.pyplot as plt
 
 n_dim = 2
 n_edges = 4
-_p_1 = cp.Variable(n_dim)
-_p_2 = cp.Variable(n_dim)
+_p = cp.Variable(n_dim)
 ball_center = cp.Parameter(n_dim)
 ball_radius = 1
 _A =  np.array([
@@ -15,12 +14,12 @@ _A =  np.array([
         [ 0, -1],
     ])
 _b = np.array([-5, 3, -1, -1])
+kappa = 5.0
 
-obj = cp.Minimize(cp.norm(_p_1 - _p_2, 2))
+obj = cp.Minimize(cp.sum_squares(_p - ball_center)/ball_radius ** 2)
 # _p_1 belongs to a ball and _p_2 belongs to a box
 cons = [
-    cp.sum_squares(_p_1 - ball_center) <= ball_radius ** 2,
-    _A @ _p_2 + _b <= 0,
+    cp.log_sum_exp(kappa*(_A @ _p + _b))/kappa - np.log(n_edges)/kappa <= 0,
 ]
 problem = cp.Problem(obj, cons)
 assert problem.is_dpp()
@@ -32,7 +31,6 @@ min_dist = np.zeros_like(center_y_np)
 for i, center_y in enumerate(center_y_np):
     ball_center.value = np.array([center_x, center_y])
     min_dist[i] = problem.solve(solver=cp.ECOS, verbose=False)
-
 
 plt.rcParams['font.family'] = 'serif'
 plt.rcParams.update({"text.usetex": True,
@@ -48,10 +46,11 @@ ax.tick_params(axis='both', which='major', labelsize=ticksize, grid_linewidth=10
 # ax.set_xlabel(r"$y_c$", fontsize=fontsize)
 
 ax = fig.add_subplot(212)
+gradients = np.diff(min_dist) / np.diff(center_y_np)
 ax.plot(center_y_np[2:], np.gradient(min_dist, center_y_np)[2:], linewidth=4, color="tab:orange")
 ax.tick_params(axis='both', which='major', labelsize=ticksize, grid_linewidth=10)
 ax.set_xlabel(r"$y_c$", fontsize=fontsize)
 
 plt.tight_layout()
-plt.savefig("eg0_results/euclidean.pdf", dpi=300)
+plt.savefig("eg0_results/001/ours.pdf", dpi=300)
 plt.show()
